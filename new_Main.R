@@ -120,7 +120,7 @@ freqDrugK %>% print(n = Inf)
 
 # Drug Lists ----------------------------------------------------------------------------------------------------------------------------------------------
 #Drugs to include for calcium (tentative)
-includePrescCa <- freqDrugCa$drug[c(1,6,12,14)]
+includePrescCa <- freqDrugCa$drug[c(1,6,7,10,12,14)]
 #Drugs to include for phosphate (tentative)
 includePrescPh <- freqDrugPh$drug[c(1,2)]
 #Drugs to include for magnesium (tentative)

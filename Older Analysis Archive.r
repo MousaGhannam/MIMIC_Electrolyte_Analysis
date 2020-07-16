@@ -48,7 +48,7 @@ levels(factor(prescriptionsCa$drug))
 #Frequencies of different calcium repletions
 freqDrugCa <- prescriptionsCa %>% 
   count(., drug, sort = TRUE)
-
+freqDrugCa$drug[c(1,5,9,11)]
 #Frequencies of different calcium routes
 freqRouteCa <- prescriptionsCa %>% 
   count(., route, sort = TRUE)

@@ -112,8 +112,6 @@ tbl_mimic(prescriptions) %>%
   print() -> prescriptionsCaTib
 
 
-
-
 allLabEvents %>%
   inner_join(codesCa, by = "itemid") %>%
   inner_join(prescriptionsCaTib, by = "hadm_id") %>%
