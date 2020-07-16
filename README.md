@@ -1,2 +1,2 @@
-# MIMIC_Electrolyte_Analysis
+#MIMIC Electrolyte Analysis
 Electrolyte Analysis on the MIMIC III Database 
