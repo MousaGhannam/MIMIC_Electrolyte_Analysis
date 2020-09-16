@@ -1,0 +1,172 @@
+---
+title: "Mimic Electrolyte Analysis"
+output: 
+  html_notebook:
+    toc: true  
+    depth: 3
+    theme: simplex
+editor_options:
+  chunk_output_type: inline
+---
+
+## Load Libraries
+Load all relevant R libraries.
+```{r Load Libaries, message=FALSE, warning=FALSE,  results='hide'}
+# Load Libraries 
+library("RPostgres")
+library("ggplot2")
+library("tidyverse")
+library("dbplyr")
+library("lubridate")
+library("data.table")
+library("dtplyr")
+library("ggpubr")
+library("muStat")
+library("mvnormtest")
+library("knitr")
+library("kableExtra")
+```
+
+## Connect to Relational Database 
+```{r Connect to Relational Database, message=FALSE, warning=FALSE}
+# load the PostgreSQL driver
+drv <- dbDriver("Postgres")
+
+# create a connection to the postgres database
+# set the search path to the mimiciii schema
+con <- dbConnect(drv, dbname = "mimic",
+                 host = "localhost", port = 5432,
+                 user = "mousaghannam")
+dbSendQuery(con, 'set search_path to mimiciii')
+```
+
+#### Show a list of all the tables in the relational database. 
+```{r}
+# show a list of tables
+dbListTables(con)
+```
+
+#### Function for more easily pulling a given table.
+This is a memory conservative approaching for performing SQL queries on DB. We can pull tables in memory and do certain analyses on them, without actually having to save a given object into the R environment. 
+```{r}
+#Memory conserative approaching for performing SQL queries on DB 
+#(Rewrite this function to handle multiple inputs )
+tbl_mimic <- function(table) {
+  table <- as.character(substitute(table))
+  tbl(con, dbplyr::in_schema("mimiciii", table))
+}
+```
+
+### Create dictionary of diagnosis codes
+This "dictionary" will contain all of the diagnoses events in the database associated with a given hospital admission id (`hadm_id`), along with a description of the icd9 code. 
+```{r}
+#Pull dictionary for diagnoses
+d_icd_diagnoses <- tbl_mimic(d_icd_diagnoses) %>%
+  select(icd9_code, short_title)
+
+diagnoses_icd <-tbl_mimic(diagnoses_icd) %>%
+  select(hadm_id, icd9_code, seq_num)
+
+#ICD-9 Codes + their descriptions
+icd9_dict <- diagnoses_icd %>%
+  inner_join(d_icd_diagnoses, by = "icd9_code")
+
+icd9_dict
+```
+## Load Electrolyte Lab Measurements
+
+### Determine the ids corresponding to lab values for each electrolyte 
+Saved all of the lab_ids into R environment with `collect()`, for filtering in the next step.
+```{r}
+d_labitems <- tbl_mimic(d_labitems) #Pull dictionary for lab items into memory 
+
+d_labitems %>%
+  filter(str_detect(tolower(label), "potassium")) %>%
+  collect() -> lab_idsK
+
+lab_idsK
+```
+#### Filter them 
+We are choosing to include the 1st and 4th row, which are strictly blood lab value draws for potassium. 
+```{r}
+#Drugs to include for potassium 
+itemidsK <- lab_idsK$itemid[c(1,4)]
+```
+### Pull table containing all lab measurements.
+We are now taking the table `labevents`, which contains all the lab events in the database, and selecting the rows associated with the two blood potassium lab values `itemid`s that we chose above. 
+```{r}
+labevents <- tbl_mimic(labevents)
+
+labevents %>% 
+  filter(itemid %in% itemidsK)  %>%
+  inner_join(select(tbl_mimic(d_labitems),-loinc_code, -row_id ), by = "itemid") %>%
+  select(subject_id, hadm_id, itemid, charttime, valuenum, valueuom, label, flag, fluid, category) -> labEventsK
+
+labEventsK
+```
+## Filter repletion events from the metaview database
+The `d_items` table in mimics contains a dictionary for all of the events associated with both the metaview and careview database. We are only going to focus on the metaview database at this point. We then want to filter this table by the label description for items that are related to potassium. 
+```{r}
+d_items <- tbl_mimic(d_items) #Pull dictionary for all lab events into memory 
+
+d_items %>%
+  filter(label %ilike% "%potassium%" | label %ilike% "%kcl%") %>%
+  filter(str_detect(tolower(dbsource), "meta")) %>%
+  arrange(label) -> k_items_MV
+
+k_items_MV 
+
+```
+Although there are events sourced from either metaview or careview, these two hospital databases are actually linked to 3 different tables in the mimics database: `inputevents_mv`, `inputevents_cv` or `chartevents.` Since we are examining only the metavision database, it will only link to `inputevents_mv` and `chartevents.` We would like to select for only the events that link to  `inputevents_mv`.
+
+```{r}
+k_items_MV %>% 
+  filter(linksto=="inputevents_mv") %>% collect() -> k_items_MV_IM
+
+k_items_MV_IM
+```
+If you look at the above table, the first row has a KCL (Bolus) with unit mL, while the 5th row has Potassium Chloride with units in mEq. According to the mimics iii website: 
+
+> "Metavision records IO data using two tables: RANGESIGNALS and ORDERENTRY. These tables do not appear in MIMIC-III as they have been merged to form the > INPUTEVENTS_MV table. RANGESIGNALS contains recorded data elements which last for a fixed period of time. Furthermore, the RANGESIGNALS table recorded > information for each component of the drug separately. For example, for a norepinephrine administration there would be two components: a main order    > component (norepinephrine) and a solution component (NaCl)." [^1]
+
+[^1]: <em>https://mimic.physionet.org/mimicdata/io/</em> 
+
+Therefore, we will only be selecting repletions based off of the "main order component", and ignoring the solution. We will select for the 4th and 5th rows, which correspond to Potassiume Acetate and Potassium Chloride. 
+
+```{r}
+k_items_MV_IM %>% slice(-6,-3, -2,-1) -> k_items_MV_IM #ONLY KEEPING THE REPLETIONS, THE ADDITIVE AMOUNTS, NOT THE BOLUS 
+k_items_MV_IM
+```
+## Pull repletion events from metaview databse
+We will now use the filtered ids for the two additive solutions above to pull electrolyte repletions from the `inputevents_mv` table.
+```{r}
+inputevents_mv <- tbl_mimic(inputevents_mv)
+
+inputevents_mv %>%
+  filter(itemid %in% k_items_MV_IM_vector) %>%
+  select(subject_id, hadm_id,icustay_id, linkorderid, orderid, itemid, starttime, endtime, amount, amountuom, rate, rateuom, statusdescription, ordercomponenttypedescription) %>%
+  filter(!statusdescription == "Rewritten") %>%
+  rename(itemid.repletion = itemid) -> repEventsK
+
+repEventsK
+```
+Determine the amount of potassium repletions: 
+```{r Potassium Repletion Count}
+repEventsK %>% count() %>% collect() -> numKRepletions
+
+print(paste(" There are ",pull(numKRepletions[1,1]), " total potassium repletions that were extracted from the inputevents_mv table." ))
+
+```
+
+## Join tables containing repletion events and lab events 
+Both the tables containing the lab draws and the repletion events have been extracted. We can now join them to begin analyzing the relationship between them. 
+```{r Join Repletions and Lab Events}
+repEventsK %>% 
+  inner_join(labEventsK, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  distinct() %>%
+  rename(charttime.lab = charttime) %>%
+  collect() -> k_lab_repletions_MV_new
+
+k_lab_repletions_MV_new
+```
+
