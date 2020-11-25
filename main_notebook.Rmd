@@ -1,10 +1,13 @@
 ---
 title: "Mimic Electrolyte Analysis"
-output: 
+output:
   html_notebook:
-    toc: true  
+    toc: yes
     depth: 3
     theme: simplex
+  html_document:
+    toc: yes
+    df_print: paged
 editor_options:
   chunk_output_type: inline
 ---
@@ -268,6 +271,7 @@ allRepLabEvents %>%
 allNonRepletions <- bind_rows(list(pre_repletion = nonRepletLabsPre, post_repletion = nonRepletLabsPost), .id = "preVsPost")
 ```
 
+
 ## Exclusions 
 We now want to exclude all the rows based on certain criteria. 
 
@@ -287,6 +291,15 @@ hadm_id_table %>%
   summarize(n = n()) %>% 
   arrange(desc(n)) %>%
   kable()
+
+k_pre_post_repletions_MV_new %>%
+  ungroup()%>%
+  semi_join(hadm_id_table, by = "hadm_id") %>% 
+  select(icustay_id, orderir, .id) %>%
+  group_by(.id) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
 ```
 
 And here is the resultant dataset after *actually* excluding this time, using an anti-join instead. 
@@ -296,6 +309,16 @@ k_pre_post_repletions_MV_new %>%
 
 postExclusionsK_Repleted
 ```
+
+###Another Exclusions 
+```{r}
+k_pre_post_repletions_MV_new %>%
+  semi_join(hadm_id_table, by = "hadm_id")
+
+hadm_id_table %>%
+  semi_join(k_pre_post_repletions_MV_new, by = "hadm_id")
+```
+
 
 ## Analysis and Visualization 
 We are going to do analysis here on the dataset containing repletions. We are making this distinction, as later on, we will do analysis on non-repletions. 
@@ -317,9 +340,36 @@ ggpar(gghistogram(data = postExclusionsK_Repleted, x="valuenum", fill = "preVsPo
       , xlim = c(2,6))
 
 ggplot(postExclusionsK_Repleted, aes(x = valuenum,fill=preVsPost)) +
-  geom_histogram(alpha=0.6, position="identity",bins=40, aes(y = ..density..), color="black") + scale_x_continuous(limits = c(2,6)) + theme_pubr()
+  geom_histogram(alpha=0.6, position="identity",bins=40, color="black") + scale_x_continuous(limits = c(2,6) ) + theme_pubr() + xlab("Potassium Value") + ylab("Number of Occurrences") + scale_fill_discrete(name = "", labels = c("Post repletion K", "Pre repletion K"))
 
 ```
+
+#### Pie Chart 
+
+```{r}
+
+postExclusionsK_Repleted %>%
+   mutate(repletionRange = case_when(valuenum < 3.5 & flag == "abnormal" ~ "below normal",
+                                    valuenum > 3.5 & flag == "abnormal" ~ "above range",TRUE ~ "within range")) -> postExclusionsK_Repleted
+
+postExclusion_freq <- postExclusionsK_Repleted %>%
+  group_by(repletionRange) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100) 
+
+ggplot(postExclusion_freq, aes("", percentage, fill = repletionRange)) + 
+  geom_bar(stat = "identity", color = "white", size = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values =c( "#B3B3B3","#27408B","#EE7621"),name = " ",
+                    labels = c( "Above 5.2","Below 3.4", "3.4-5.2" )
+                    ) +
+  theme_void() + theme(legend.position="top")  -> pie_chart_k
+
+pie_chart_k
+
+```
+
+
 
 ### Non - Repletion Analysis 
 
@@ -396,6 +446,18 @@ postexclusion_nonRepletions %>%
   ggplot(aes(x = valuenum)) +
   geom_histogram(alpha=0.6, position="identity",bins=14, color="black") + scale_x_continuous(limits = c(1,3.5)) + theme_pubr()
 ```
+
+
+###Amount of people that replete (vs Non-Replete) across lab value 
+
+```{r}
+repletedVsNonRepleted_PreV %>%
+  group_by(valuenum, repleteVsNon) %>%
+  summarize(observations = n() ) %>%
+  ggplot(aes(fill=repleteVsNon, y=observations, x=valuenum)) + 
+    geom_bar(position="fill", stat="identity") + scale_x_continuous()  + theme_pubr()
+```
+
 ## Time of Day Analysis 
 Examining the time of day for each repletion and lab value. 
 
@@ -431,7 +493,8 @@ repletedVsNonRepleted_PreV %>%
   ungroup() %>%
   mutate(LabHour = hour(charttime.lab)) %>%
   filter(preVsPost == "pre_repletion") %>%
-  ggplot(aes(x = LabHour,fill=repleteVsNon)) + geom_histogram(position="identity",bins = 24,alpha=0.6, color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr()
+  ggplot(aes(x = LabHour,fill=repleteVsNon)) + geom_histogram(position="identity",bins = 24,alpha=0.6, color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr() + xlab("Hour of Day") + ylab("Number of Lab Values") + scale_fill_discrete(name = "", labels = c("Non-Repletion", "Repletion"))
+
 
 ```
 
@@ -466,9 +529,16 @@ repletedVsNonRepleted_PreV %>%
   filter(preVsPost == "pre_repletion") %>%
   group_by(LabHour, repleteVsNon) %>%
   summarize(mean_lab_value = mean(valuenum, na.rm = T)) %>%
+  ggplot(aes(x=LabHour,y=mean_lab_value,group=repleteVsNon, color = repleteVsNon)) + geom_line() + geom_point() + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr()
+
+
+repletedVsNonRepleted_PreV %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean_lab_value = mean(valuenum, na.rm = T)) %>%
   ggplot(aes(x=LabHour,y=mean_lab_value,fill=repleteVsNon)) + geom_bar(stat="identity", position = "dodge", color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr()
-
-
 ```
 
 

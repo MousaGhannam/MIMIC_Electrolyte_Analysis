@@ -1,0 +1,547 @@
+---
+title: "Mg Notebook"
+output: html_notebook
+---
+
+---
+title: "Mimic Electrolyte Analysis"
+output:
+  html_notebook:
+    toc: yes
+    depth: 3
+    theme: simplex
+  html_document:
+    toc: yes
+    df_print: paged
+editor_options:
+  chunk_output_type: inline
+---
+
+## Load Libraries
+Load all relevant R libraries.
+```{r Load Libaries, message=FALSE, warning=FALSE,  results='hide'}
+# Load Libraries 
+library("RPostgres")
+library("ggplot2")
+library("tidyverse")
+library("dbplyr")
+library("lubridate")
+library("data.table")
+library("dtplyr")
+library("ggpubr")
+library("muStat")
+library("mvnormtest")
+library("knitr")
+library("kableExtra")
+```
+
+## Connect to Relational Database 
+```{r Connect to Relational Database, message=FALSE, warning=FALSE}
+# load the PostgreSQL driver
+drv <- dbDriver("Postgres")
+
+# create a connection to the postgres database
+# set the search path to the mimiciii schema
+con <- dbConnect(drv, dbname = "mimic",
+                 host = "localhost", port = 5432,
+                 user = "mousaghannam")
+dbSendQuery(con, 'set search_path to mimiciii')
+```
+
+#### Show a list of all the tables in the relational database. 
+```{r}
+# show a list of tables
+dbListTables(con)
+```
+
+#### Function for more easily pulling a given table.
+This is a memory conservative approaching for performing SQL queries on DB. We can pull tables in memory and do certain analyses on them, without actually having to save a given object into the R environment. 
+```{r}
+#Memory conserative approaching for performing SQL queries on DB 
+#(Rewrite this function to handle multiple inputs )
+tbl_mimic <- function(table) {
+  table <- as.character(substitute(table))
+  tbl(con, dbplyr::in_schema("mimiciii", table))
+}
+```
+
+### Create dictionary of diagnosis codes
+This "dictionary" will contain all of the diagnoses events in the database associated with a given hospital admission id (`hadm_id`), along with a description of the icd9 code. 
+```{r}
+#Pull dictionary for diagnoses
+d_icd_diagnoses <- tbl_mimic(d_icd_diagnoses) %>%
+  select(icd9_code, short_title)
+
+diagnoses_icd <-tbl_mimic(diagnoses_icd) %>%
+  select(hadm_id, icd9_code, seq_num)
+
+#ICD-9 Codes + their descriptions
+icd9_dict <- diagnoses_icd %>%
+  inner_join(d_icd_diagnoses, by = "icd9_code")
+
+icd9_dict
+```
+## Load Electrolyte Lab Measurements
+
+### Determine the ids corresponding to lab values for each electrolyte 
+Saved all of the lab_ids into R environment with `collect()`, for filtering in the next step.
+```{r}
+d_labitems <- tbl_mimic(d_labitems) #Pull dictionary for lab items into memory 
+
+d_labitems %>%
+  filter(str_detect(tolower(label), "magnesium")) %>%
+  collect() -> lab_idsMg
+
+lab_idsMg
+```
+#### Filter them 
+We are choosing to include the 1st and 4th row, which are strictly blood lab value draws for potassium. 
+```{r}
+#Drugs to include for potassium 
+itemidsMg <- lab_idsMg$itemid[c(1)]
+```
+### Pull table containing all lab measurements.
+We are now taking the table `labevents`, which contains all the lab events in the database, and selecting the rows associated with the two blood potassium lab values `itemid`s that we chose above. 
+```{r}
+labevents <- tbl_mimic(labevents)
+
+labevents %>% 
+  filter(itemid %in% itemidsMg)  %>%
+  inner_join(select(tbl_mimic(d_labitems),-loinc_code, -row_id ), by = "itemid") %>%
+  select(subject_id, hadm_id, itemid, charttime, valuenum, valueuom, label, flag, fluid, category) -> labEventsMg
+
+labEventsMg %>% count() %>% collect() -> numLabMgevents
+
+labEventsMg
+
+print(paste(" There are ",pull(numLabMgevents[1,1]), " total magnesium lab values that were extracted from the labevents table." ))
+
+```
+## Define repletion events within the metaview database
+The `d_items` table in mimics contains a dictionary for all of the events associated with both the metaview and careview database. We are only going to focus on the metaview database at this point. We then want to filter this table by the label description for items that are related to potassium. 
+```{r}
+d_items <- tbl_mimic(d_items) #Pull dictionary for all lab events into memory 
+
+d_items %>%
+  filter(label %ilike% "%magnesium%" | label %ilike% "%mg%") %>%
+  filter(str_detect(tolower(dbsource), "meta")) %>%
+  arrange(label) -> mg_items_MV
+
+mg_items_MV 
+
+```
+Although there are events sourced from either metaview or careview, these two hospital databases are actually linked to 3 different tables in the mimics database: `inputevents_mv`, `inputevents_cv` or `chartevents.` Since we are examining only the metavision database, it will only link to `inputevents_mv` and `chartevents.` We would like to select for only the events that link to  `inputevents_mv`.
+
+```{r}
+mg_items_MV %>% 
+  filter(linksto=="inputevents_mv") %>% collect() -> mg_items_MV_IM
+
+mg_items_MV_IM
+```
+If you look at the above table, the first row has a KCL (Bolus) with unit mL, while the 5th row has Potassium Chloride with units in mEq. According to the mimics iii website: 
+
+> "Metavision records IO data using two tables: RANGESIGNALS and ORDERENTRY. These tables do not appear in MIMIC-III as they have been merged to form the > INPUTEVENTS_MV table. RANGESIGNALS contains recorded data elements which last for a fixed period of time. Furthermore, the RANGESIGNALS table recorded > information for each component of the drug separately. For example, for a norepinephrine administration there would be two components: a main order    > component (norepinephrine) and a solution component (NaCl)." [^1]
+
+[^1]: <em>https://mimic.physionet.org/mimicdata/io/</em> 
+
+Therefore, we will only be selecting repletions based off of the "main order component", and ignoring the solution. We will select for the 4th and 5th rows, which correspond to Potassiume Acetate and Potassium Chloride. 
+
+```{r}
+mg_items_MV_IM %>% slice(1) -> mg_items_MV_IM #ONLY KEEPING THE REPLETIONS, THE ADDITIVE AMOUNTS, NOT THE BOLUS 
+mg_items_MV_IM
+
+mg_items_MV_IM %>% pull(itemid) -> mg_items_MV_IM_vector 
+```
+## Pull repletion events from metaview databse
+We will now use the filtered ids for the two additive solutions above to pull electrolyte repletions from the `inputevents_mv` table.
+```{r}
+inputevents_mv <- tbl_mimic(inputevents_mv)
+
+inputevents_mv %>%
+  filter(itemid %in% mg_items_MV_IM_vector) %>%
+  select(subject_id, hadm_id,icustay_id, linkorderid, orderid, itemid, starttime, endtime, amount, amountuom, rate, rateuom, statusdescription, ordercomponenttypedescription) %>%
+  filter(!statusdescription == "Rewritten") %>%
+  rename(itemid.repletion = itemid) -> repEventsMg
+
+repEventsMg
+```
+Determine the amount of potassium repletions: 
+```{r Potassium Repletion Count}
+repEventsMg %>% count() %>% collect() -> numMgRepletions
+
+print(paste(" There are ",pull(numMgRepletions[1,1]), " total potassium repletions that were extracted from the inputevents_mv table." ))
+
+```
+
+## Join tables containing repletion events and lab events 
+Both the tables containing the lab draws and the repletion events have been extracted. We can now join them to begin analyzing the relationship between them. 
+
+In addition to joining the tables, we have renamed the column corresponding to the moment the fluid collection for the lab value was recorded, `charttime`, as `charttime.lab` for clarity. 
+```{r Join Repletions and Lab Events}
+repEventsMg %>% 
+  inner_join(labEventsMg, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  distinct() %>%
+  rename(charttime.lab = charttime) %>%
+  collect() -> mg_lab_repletions_MV_new
+
+mg_lab_repletions_MV_new
+```
+### Find recent repletions
+We want to flag all repletion events that occurred either 24 hours before or 24 hours after a given lab value. We then filter the table, storing all of the repletions occurring BEFORE a given lab value in one table, and all of the ones occurring AFTER a given lab value in another. 
+```{r}
+#Find the RECENT Repletions
+mg_lab_repletions_MV_new %>%
+  mutate(charttime.lab= as_datetime(charttime.lab), endtime=as_datetime(endtime), starttime = as_datetime(starttime)) %>%
+  mutate(isRecentPre = difftime(starttime, charttime.lab, units = "hours") <= 24 & difftime(starttime, charttime.lab, units = "hours") > 0 ) %>%
+  mutate(isRecentPost = difftime(endtime, charttime.lab, units = "hours") >= -24 & difftime(endtime, charttime.lab, units = "hours") < 0 )  -> allRepLabEvents
+
+allRepLabEvents %>% 
+  filter(isRecentPre | isRecentPost)
+```
+
+### Extract the most recent repletion, prior and after a given lab value. 
+We have a table that contains all of the repletion events that occur either 24 hours prior or after a given lab value. We then group the rows by each subject and hospital id, as well as the time of fluid acquisition for the lab value. Then, we create a column that generates a flag if the lab value that is chosen is the minimum `starttime` for all the possible `starttime`s. Because there are multiple lab values, as well as multiple repletion events, for a given `hadm_id` the table outputted has all the possible permutations. We want to select the most recent repletion AFTER a lab value, so we choose the repletion with the `starttime` equal to the minimum `starttime` for a given lab value. 
+
+```{r}
+#Potassium lab event PRE-repletions 
+allRepLabEvents %>%
+  filter(isRecentPre) %>% 
+  group_by(subject_id, hadm_id,charttime.lab) %>%
+  mutate(isMostRecentRepletion = starttime == min(starttime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id, hadm_id, starttime) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == max(charttime.lab)) %>%
+  filter(isMostRecentLabEvent)  %>% distinct() -> pre_mg_lab_repletions_MV_new
+
+pre_mg_lab_repletions_MV_new
+```
+
+For the post-repletion lab values, we are now doing the same thing, but instead finding the maximum endtime prior to a given lab value, to select the most recent repletion prior to a given lab value. 
+
+```{r}
+#Potassium lab event POST-repletions 
+allRepLabEvents %>%
+  filter(isRecentPost) %>% 
+  group_by(subject_id, hadm_id,charttime.lab) %>%
+  mutate(isMostRecentRepletion = endtime == max(endtime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id, hadm_id, endtime) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == min(charttime.lab)) %>%
+  filter(isMostRecentLabEvent)  %>% distinct() -> post_mg_lab_repletions_MV_new
+
+post_mg_lab_repletions_MV_new
+```
+
+
+We then combine all of the values from the "pre-repletion" and "post-repletion" tables, into one table. We create a new column `preVsPost` to indicate if a given event is either before or after a lab value. Conceivably, the same repletion could correspond to a 
+
+```{r}
+#Combine them into one dataset 
+mg_pre_post_repletions_MV_new <- bind_rows(list(pre_repletion = pre_mg_lab_repletions_MV_new, post_repletion = post_mg_lab_repletions_MV_new), .id = "preVsPost")
+mg_pre_post_repletions_MV_new %>% distinct()
+
+```
+
+## Non Repletion Events
+We will now determine the set of lab values for which there was no immediate repletion afterward. 
+
+### Extract non-repleted values within 24 hours
+In this section, we have started by filtering all the repletions prior and after a lab value, just like for the analysis on the repletions. However, this time, if there are multiple lab values that occur before a given repletion (or after), we are taking the ones after the first one. 
+
+```{r}
+#Potassium lab event PRE-repletions 
+allRepLabEvents %>%
+  filter(isRecentPre) %>% 
+  group_by(subject_id, hadm_id,charttime.lab) %>%
+  mutate(isMostRecentRepletion = starttime == min(starttime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id, hadm_id, starttime) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == max(charttime.lab)) %>%
+  filter(!isMostRecentLabEvent)  %>% distinct() -> nonRepletLabsPre 
+
+#Potassium lab event POST-repletions 
+allRepLabEvents %>%
+  filter(isRecentPost) %>% 
+  group_by(subject_id, hadm_id,charttime.lab) %>%
+  mutate(isMostRecentRepletion = endtime == max(endtime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id, hadm_id, endtime) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == min(charttime.lab)) %>%
+  filter(!isMostRecentLabEvent)  %>% distinct() -> nonRepletLabsPost
+
+allNonRepletions <- bind_rows(list(pre_repletion = nonRepletLabsPre, post_repletion = nonRepletLabsPost), .id = "preVsPost")
+```
+
+
+## Exclusions 
+We now want to exclude all the rows based on certain criteria. 
+
+We have a table called `hadm_id_table` which contains all of the hadm_ids of patients with diagnoses that would confound our results (kidney disease, etc). (WILL ADD HOW I CREATED THIS TABLE LATER).
+
+```{r}
+hadm_id_table
+```
+
+As a result, we could simply do a semi-join to determine how many people in each group were excluded. **Note**, we are doing the anti-join on the table with the most recent repletion before and after a given lab result, within a 24 hour time range. We are **not** doing it on the set of ALL possible repletion and or lab result events. 
+
+```{r}
+hadm_id_table %>%
+  semi_join(mg_pre_post_repletions_MV_new, by = "hadm_id") %>% 
+  select(hadm_id, .id) %>%
+  group_by(.id) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+# mg_pre_post_repletions_MV_new %>%
+#   ungroup()%>%
+#   semi_join(hadm_id_table, by = "hadm_id") %>% 
+#   select(icustay_id, orderid, .id) %>%
+#   group_by(.id) %>%
+#   summarize(n = n()) %>% 
+#   arrange(desc(n)) %>%
+#   kable()
+```
+
+And here is the resultant dataset after *actually* excluding this time, using an anti-join instead. 
+```{r}
+mg_pre_post_repletions_MV_new %>%
+  anti_join(hadm_id_table, by = "hadm_id") -> postExclusionsMg_Repleted
+
+postExclusionsMg_Repleted
+```
+
+###Another Exclusions 
+```{r}
+mg_pre_post_repletions_MV_new %>%
+  semi_join(hadm_id_table, by = "hadm_id")
+
+hadm_id_table %>%
+  semi_join(mg_pre_post_repletions_MV_new, by = "hadm_id")
+```
+
+
+## Analysis and Visualization 
+We are going to do analysis here on the dataset containing repletions. We are making this distinction, as later on, we will do analysis on non-repletions. 
+
+### Analysis on Repletions
+#### Table
+In this table we are just doing some summary analysis on the dataset. 
+
+```{r}
+postExclusionsMg_Repleted %>%
+  group_by( preVsPost) %>%
+  summarize(n = n(), mean = mean(valuenum, na.rm = TRUE), standard_deviation = sd(valuenum, na.rm = T)) 
+```
+
+#### Histogram
+Histogram of Pre and Post Repletions
+```{r,fig.subcap= "Pre Vs Post Repletion Lab Values"}
+ggpar(gghistogram(data = postExclusionsMg_Repleted, x="valuenum", fill = "preVsPost",  add="mean", palette = c("#00AFBB", "#E7B800"),add_density = FALSE, bins = 40, gggtheme = theme_pubr(), xlab = "Lab Value", title = "Pre Vs Post Repletion Lab Values - Potassium", ylab = "Repletions")
+      , xlim = c(0.5,4.2))
+
+ggplot(postExclusionsMg_Repleted, aes(x = valuenum,fill=preVsPost)) +
+  geom_histogram(alpha=0.6, position="identity",bins=38, color="black") + scale_x_continuous(limits = c(0.5,4.2) ) + theme_pubr() + xlab("Magnesium Value") + ylab("Number of Occurrences") + scale_fill_discrete(name = "", labels = c("Post repletion Mg", "Pre repletion Mg"))
+
+```
+
+#### Pie Chart 
+
+```{r}
+
+postExclusionsMg_Repleted %>%
+   mutate(repletionRange = case_when(valuenum < 2 & flag == "abnormal" ~ "below normal",
+                                    valuenum > 2 & flag == "abnormal" ~ "above range",TRUE ~ "within range")) -> postExclusionsMg_Repleted
+
+postExclusion_freq <- postExclusionsMg_Repleted %>%
+  group_by(repletionRange) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100)
+
+ggplot(postExclusion_freq, aes("", percentage, fill = repletionRange)) + 
+  geom_bar(stat = "identity", color = "white", size = 1) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values =c( "#B3B3B3","#27408B","#EE7621"),name = " ", ,labels = c("Above 2.5", "Below 1.5", "1.5-2.5")) +
+  theme_void() + theme(legend.position="top")  -> pie_chart_mg
+
+pie_chart_mg
+
+```
+
+
+
+### Non - Repletion Analysis 
+
+```{r}
+allNonRepletions <- bind_rows(list(pre_repletion = nonRepletLabsPre, post_repletion = nonRepletLabsPost), .id = "preVsPost")
+
+#Run Exclusions
+allNonRepletions %>%
+  anti_join(hadm_id_table, by = "hadm_id") -> postexclusion_nonRepletions
+
+postexclusion_nonRepletions
+```
+
+
+#### Table 
+
+```{r}
+postexclusion_nonRepletions %>%
+  group_by( preVsPost) %>%
+  summarize(n = n(), mean = mean(valuenum, na.rm = TRUE), standard_deviation = sd(valuenum, na.rm = T)) 
+```
+
+
+### Combining the repleted vs NonRepleted pre lab values for comparison
+```{r}
+repletedVsNonRepleted_PreV <- bind_rows(list(repleted = postExclusionsMg_Repleted, nonRepleted = postexclusion_nonRepletions), .id = "repleteVsNon") %>% filter(preVsPost == "pre_repletion")
+repletedVsNonRepleted_PreV %>% distinct()
+```
+#### Table
+```{r}
+#Table
+repletedVsNonRepleted_PreV %>%
+  group_by(repleteVsNon,flag) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+  mutate(percentage = observations / sum(observations) * 100) 
+```
+
+
+#### Visualization
+
+```{r}
+#Visualizing the non-repleted vs repleted lab values 
+ggpar(gghistogram(data = repletedVsNonRepleted_PreV, x="valuenum", fill = "flag", add="mean",position = "identity", palette = c("#00AFBB", "#E7B800"),add_density = FALSE, bins = 150, gggtheme = theme_pubr(), xlab = "Lab Value", title = "Pre Vs Post Repletion Lab Values - Potassium", ylab = "Repletions", facet.by = "repleteVsNon")
+      , xlim = c(0.5,4.5))
+```
+**Question**: How can there be histogram bars that are "abnormal" on top of bars that are white? Are they just not granular enough to differentiate them? 
+I think there are errors in how the data was flagged. Should look more into this. 
+#### Looking at the outliers 
+
+##### Repleted above the threshold.
+```{r}
+repletedVsNonRepleted_PreV %>%
+  filter(repleteVsNon == "repleted") %>%
+  filter(flag == "abnormal" & valuenum > 4) %>%
+  ungroup()%>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) 
+```
+
+##### Didn't replete Below the threshold.
+
+###### Table 
+```{r}
+postexclusion_nonRepletions %>%
+  filter(flag == "abnormal" & valuenum < 4) %>%
+  ungroup() %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) 
+```
+
+###### Visualization of not repletiong below the threshold
+
+```{r}
+postexclusion_nonRepletions %>%
+  filter(valuenum < 3.5 & flag == "abnormal") %>%
+  ggplot(aes(x = valuenum)) +
+  geom_histogram(alpha=0.6, position="identity",bins=14, color="black") + scale_x_continuous(limits = c(1,3.5)) + theme_pubr()
+```
+
+
+###Amount of people that replete (vs Non-Replete) across lab value 
+
+```{r}
+repletedVsNonRepleted_PreV %>%
+  group_by(valuenum, repleteVsNon) %>%
+  summarize(observations = n() ) %>%
+  ggplot(aes(fill=repleteVsNon, y=observations, x=valuenum)) + 
+    geom_bar(position="fill", stat="identity") + scale_x_continuous()  + theme_pubr()
+```
+
+## Time of Day Analysis 
+Examining the time of day for each repletion and lab value. 
+
+```{r}
+repletedVsNonRepleted_PreV %>%
+  mutate(RepletionHour = hour(starttime), LabHour = hour(charttime.lab)) %>%
+  gghistogram(x = c("LabHour","RepletionHour"), bins = 24, palette  = "uchicago", alpha = 0.5, merge = T, xlab = "Hours", ylab = "Number of Occurences")
+
+repletedVsNonRepleted_PreV %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab) + 4, RepletionHour = hour(starttime)) %>%
+  pivot_longer(cols = c(LabHour,RepletionHour), values_to="Hour", names_to="WhichHour") -> yy
+
+ordered(yy$WhichHour)
+yy$WhichHour <- factor(yy$WhichHour, ordered = FALSE)
+yy$WhichHour <- relevel(yy$WhichHour,"RepletionHour")
+ggplot(yy, aes(x = Hour,fill=WhichHour)) + geom_histogram(position="identity",bins = 24,alpha=0.6) + 
+  scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr()
+
+ggplot(yy, aes(x = Hour,fill=WhichHour)) +
+  geom_histogram(alpha=0.4, position="identity",bins=24, color="black") + scale_x_continuous(breaks=seq(0,24,2)) + facet_wrap(vars(repleteVsNon))
+```
+
+#### Pre-Repletion vs Non-Repleted Lab Values 
+Below, we have the time of day for lab value draws that occur for lab values that were repleted, and those that did not directly lead to a repletion. 
+
+It seems that those leading to a repltion were more likely to occur in the morning, while those that did not directly lead to a repletion were more likely to occur in the afternoon. 
+
+Why is this occurring? 
+Perhaps, repletions in the morning are  routine, but there is no routine in performing repletions in the afternoon. 
+```{r}
+repletedVsNonRepleted_PreV %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  ggplot(aes(x = LabHour,fill=repleteVsNon)) + geom_histogram(position="identity",bins = 24,alpha=0.6, color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr() + xlab("Hour of Day") + ylab("Number of Lab Values") + scale_fill_discrete(name = "", labels = c("Non-Repletion", "Repletion"))
+
+
+```
+
+#### Average pre-repletion lab value at each hour 
+##### Table
+```{r}
+repletedVsNonRepleted_PreV %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean_lab_value = mean(valuenum, na.rm = T)) %>%
+  pivot_wider(names_from = repleteVsNon, values_from = mean_lab_value)
+```
+
+
+##### Visualization
+
+```{r message=FALSE, warning=FALSE}
+repletedVsNonRepleted_PreV %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean_lab_value = mean(valuenum, na.rm = T)) %>%
+  ggbarplot(x="LabHour", y = "mean_lab_value", fill = "repleteVsNon", facet.by = "repleteVsNon" ) +
+  scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr()
+
+repletedVsNonRepleted_PreV %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean_lab_value = mean(valuenum, na.rm = T)) %>%
+  ggplot(aes(x=LabHour,y=mean_lab_value,group=repleteVsNon, color = repleteVsNon)) + geom_line() + geom_point() + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr()
+
+
+repletedVsNonRepleted_PreV %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean_lab_value = mean(valuenum, na.rm = T)) %>%
+  ggplot(aes(x=LabHour,y=mean_lab_value,fill=repleteVsNon)) + geom_bar(stat="identity", position = "dodge", color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr()
+```
+
+
