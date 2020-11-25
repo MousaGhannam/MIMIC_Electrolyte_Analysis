@@ -16,7 +16,7 @@ ggplot(LabEventsCa, aes(x=valuenum)) +
 thresholdsMg <- c(1.8, 2.5)
 ggplot(LabEventsMg, aes(x=valuenum)) + 
   geom_histogram(binwidth = 0.05, colour = "black", fill = "white") + 
-  xlim(0,5) + 
+  xlim(0,8) + 
   geom_vline(aes(xintercept= mean(valuenum, na.rm = T)),  color="red", linetype="dashed", size=1) + 
   geom_vline(xintercept= thresholdsMg,  color="blue", linetype="dashed", size=1) + labs(title = "Magnesium Lab Values", x = "Lab Value mEq/L", y = "Lab Draws")
 
