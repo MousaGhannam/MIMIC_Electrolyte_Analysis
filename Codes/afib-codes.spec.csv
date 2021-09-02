@@ -1,0 +1,6 @@
+code,code_standard_name,description
+I48.1,ICD-10,Persistent atrial fibrillation
+427.31,ICD9,Atrial fibrillation
+I48.2,ICD-10,Chronic atrial fibrillation
+I48.0,ICD-10,Paroxysmal atrial fibrillation
+I48.91,ICD-10,Unspecified atrial fibrillation

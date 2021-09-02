@@ -1,0 +1,584 @@
+## Load Libraries
+Load all relevant R libraries.
+```{r Load Libaries, message=FALSE, warning=FALSE,  results='hide'}
+# Load Libraries 
+library("RPostgres")
+library("ggplot2")
+library("tidyverse")
+library("dbplyr")
+library("lubridate")
+library("data.table")
+library("dtplyr")
+library("ggpubr")
+library("muStat")
+library("mvnormtest")
+library("knitr")
+library("kableExtra")
+library("ggstatsplot")
+library("ggridges")
+library("tidytext")
+
+citation(package = "RPostgres") 
+citation(package = "dbplyr") 
+citation(package = "tidyverse") 
+citation(package = "ggplot2") 
+citation(package = "rstatix") 
+citation("knitr")
+citation("ggpubr")
+citation("tidytext")
+citation("data.table")
+citation("lubridate")
+
+```
+
+## Connect to Relational Database 
+```{r Connect to Relational Database, message=FALSE, warning=FALSE}
+# load the PostgreSQL driver
+drv <- dbDriver("Postgres")
+
+# create a connection to the postgres database
+# set the search path to the mimiciii schema
+con <- dbConnect(drv, dbname = "mimic",
+                 host = "localhost", port = 5432,
+                 user = "mousaghannam")
+dbSendQuery(con, 'set search_path to mimiciii')
+```
+
+#### Show a list of all the tables in the relational database. 
+```{r}
+# show a list of tables
+dbListTables(con)
+```
+
+#### Function for more easily pulling a given table.
+This is a memory conservative approaching for performing SQL queries on DB. We can pull tables in memory and do certain analyses on them, without actually having to save a given object into the R environment. 
+```{r}
+#Memory conserative approaching for performing SQL queries on DB 
+#(Rewrite this function to handle multiple inputs )
+tbl_mimic <- function(table) {
+  table <- as.character(substitute(table))
+  tbl(con, dbplyr::in_schema("mimiciii", table))
+}
+```
+
+### Create dictionary of diagnosis codes
+This "dictionary" will contain all of the diagnoses events in the database associated with a given hospital admission id (`hadm_id`), along with a description of the icd9 code. 
+```{r}
+#Pull dictionary for diagnoses
+d_icd_diagnoses <- tbl_mimic(d_icd_diagnoses) %>%
+  select(icd9_code, short_title)
+
+diagnoses_icd <-tbl_mimic(diagnoses_icd) %>%
+  select(hadm_id, icd9_code, seq_num)
+
+#ICD-9 Codes + their descriptions
+icd9_dict <- diagnoses_icd %>%
+  inner_join(d_icd_diagnoses, by = "icd9_code")
+
+icd9_dict
+```
+## Load Electrolyte Lab Measurements
+
+### Determine the ids corresponding to lab values for each electrolyte 
+#### Potassium 
+Saved all of the lab_ids into R environment with `collect()`, for filtering in the next step.
+```{r}
+d_labitems <- tbl_mimic(d_labitems) #Pull dictionary for lab items into memory 
+
+d_labitems %>%
+  filter(str_detect(tolower(label), "potassium")) %>%
+  collect() -> lab_idsK
+
+lab_idsK
+
+```
+
+#### Magnesium
+```{r}
+d_labitems %>%
+  filter(str_detect(tolower(label), "magnesium")) %>%
+  collect() -> lab_idsMg
+
+lab_idsMg
+
+```
+
+#### Calcium
+
+```{r}
+d_labitems %>%
+  filter(str_detect(tolower(label), "calcium")) %>%
+  collect() -> lab_idsCa
+
+lab_idsCa
+
+```
+
+#### Phosphate
+
+```{r}
+d_labitems %>%
+  filter(str_detect(tolower(label), "phosphate")) %>%
+  collect() -> lab_idsPh
+
+lab_idsPh
+
+```
+
+
+### Filter them 
+We are choosing to include the 1st and 4th row, which are strictly blood lab value draws for potassium. Do the same for the other electrolytes. 
+```{r}
+#Drugs to include for potassium 
+itemidsK <- lab_idsK$itemid[c(1,4)]
+
+#Drugs to include for magnesium 
+itemidsMg <- lab_idsMg$itemid[c(1)]
+
+#Drugs to include for Calcium 
+itemidsCa <- lab_idsCa$itemid[c(4)]
+
+#Drugs to include for Phosphate
+itemidsPh <- lab_idsPh$itemid[c(2)]
+```
+
+
+### Pull table containing all lab measurements.
+We are now taking the table `labevents`, which contains all the lab events in the database, and selecting the rows associated with the two blood potassium lab values `itemid`s that we chose above. 
+```{r paged.print=TRUE}
+labevents <- tbl_mimic(labevents)
+
+labevents %>% 
+  filter(itemid %in% itemidsK)  %>%
+  inner_join(select(tbl_mimic(d_labitems),-loinc_code, -row_id ), by = "itemid") %>%
+  select(subject_id, hadm_id, itemid, charttime, valuenum, valueuom, label, flag, fluid, category) -> labEventsK
+
+labEventsK
+
+labevents %>% 
+  filter(itemid %in% itemidsMg)  %>%
+  inner_join(select(tbl_mimic(d_labitems),-loinc_code, -row_id ), by = "itemid") %>%
+  select(subject_id, hadm_id, itemid, charttime, valuenum, valueuom, label, flag, fluid, category) -> labEventsMg
+
+labEventsMg
+
+labevents %>% 
+  filter(itemid %in% itemidsCa)  %>%
+  inner_join(select(tbl_mimic(d_labitems),-loinc_code, -row_id ), by = "itemid") %>%
+  select(subject_id, hadm_id, itemid, charttime, valuenum, valueuom, label, flag, fluid, category) -> labEventsCa
+
+labEventsCa
+
+labevents %>% 
+  filter(itemid %in% itemidsPh)  %>%
+  inner_join(select(tbl_mimic(d_labitems),-loinc_code, -row_id ), by = "itemid") %>%
+  select(subject_id, hadm_id, itemid, charttime, valuenum, valueuom, label, flag, fluid, category) -> labEventsPh
+
+labEventsPh
+
+
+# print(paste(" There are ",pull(numLabKevents[1,1]), " total potassium lab values that were extracted from the labevents table." ))
+
+```
+
+
+
+## Define repletion events within the metaview database
+### Potassium
+The `d_items` table in mimics contains a dictionary for all of the events associated with both the metaview and careview database. We are only going to focus on the metaview database at this point. We then want to filter this table by the label description for items that are related to potassium. 
+```{r}
+d_items <- tbl_mimic(d_items) #Pull dictionary for all lab events into memory 
+
+d_items %>%
+  filter(label %ilike% "%potassium%" | label %ilike% "%kcl%") %>%
+  filter(str_detect(tolower(dbsource), "meta")) %>%
+  arrange(label) -> k_items_MV
+
+k_items_MV 
+
+```
+Although there are events sourced from either metaview or careview, these two hospital databases are actually linked to 3 different tables in the mimics database: `inputevents_mv`, `inputevents_cv` or `chartevents.` Since we are examining only the metavision database, it will only link to `inputevents_mv` and `chartevents.` We would like to select for only the events that link to  `inputevents_mv`.
+
+```{r}
+k_items_MV %>% 
+  filter(linksto=="inputevents_mv") %>% collect() -> k_items_MV_IM
+
+k_items_MV_IM
+```
+If you look at the above table, the first row has a KCL (Bolus) with unit mL, while the 5th row has Potassium Chloride with units in mEq. According to the mimics iii website: 
+
+> "Metavision records IO data using two tables: RANGESIGNALS and ORDERENTRY. These tables do not appear in MIMIC-III as they have been merged to form the > INPUTEVENTS_MV table. RANGESIGNALS contains recorded data elements which last for a fixed period of time. Furthermore, the RANGESIGNALS table recorded > information for each component of the drug separately. For example, for a norepinephrine administration there would be two components: a main order    > component (norepinephrine) and a solution component (NaCl)." [^1]
+
+[^1]: <em>https://mimic.physionet.org/mimicdata/io/</em> 
+
+Therefore, we will only be selecting repletions based off of the "main order component", and ignoring the solution. We will select for the 4th and 5th rows, which correspond to Potassiume Acetate and Potassium Chloride. 
+
+```{r}
+k_items_MV_IM %>% slice(6,3, 2,1) -> k_items_MV_IM #ONLY KEEPING THE REPLETIONS, THE ADDITIVE AMOUNTS, NOT THE BOLUS 
+k_items_MV_IM
+
+k_items_MV_IM %>% pull(itemid) -> k_items_MV_IM_vector 
+```
+
+### Magnesium
+```{r}
+d_items <- tbl_mimic(d_items) #Pull dictionary for all lab events into memory 
+
+d_items %>%
+  filter(label %ilike% "%magnesium%" | label %ilike% "%mg%") %>%
+  filter(str_detect(tolower(dbsource), "meta")) %>%
+  arrange(label) -> mg_items_MV
+
+mg_items_MV %>% 
+  filter(linksto=="inputevents_mv") %>% collect() -> mg_items_MV_IM
+
+mg_items_MV_IM
+
+mg_items_MV_IM %>% slice(1) -> mg_items_MV_IM #ONLY KEEPING THE REPLETIONS, THE ADDITIVE AMOUNTS, NOT THE BOLUS 
+mg_items_MV_IM
+
+mg_items_MV_IM %>% pull(itemid) -> mg_items_MV_IM_vector 
+
+```
+
+### Calcium
+```{r}
+d_items %>%
+  filter(label %ilike% "%calcium%" ) %>%
+  filter(str_detect(tolower(dbsource), "meta")) %>%
+  arrange(label) -> ca_items_MV
+
+ca_items_MV 
+
+ca_items_MV %>% 
+  filter(linksto=="inputevents_mv") %>% collect() -> ca_items_MV_IM
+
+ca_items_MV_IM
+
+ca_items_MV_IM %>% slice(1) -> ca_items_MV_IM #ONLY KEEPING THE REPLETIONS, THE ADDITIVE AMOUNTS, NOT THE BOLUS 
+ca_items_MV_IM
+
+ca_items_MV_IM %>% pull(itemid) -> ca_items_MV_IM_vector 
+
+```
+
+### Phosphate
+```{r}
+d_items %>%
+  filter(label %ilike% "%phosphate%"  | label %ilike% "na%") %>%
+  filter(str_detect(tolower(dbsource), "meta")) %>%
+  arrange(label) -> ph_items_MV
+
+ph_items_MV 
+
+ph_items_MV %>% 
+  filter(linksto=="inputevents_mv") %>% collect() -> ph_items_MV_IM
+
+ph_items_MV_IM
+
+ph_items_MV_IM %>% slice(4,5) -> ph_items_MV_IM #ONLY KEEPING THE REPLETIONS, THE ADDITIVE AMOUNTS, NOT THE BOLUS 
+ph_items_MV_IM 
+
+ph_items_MV_IM %>% pull(itemid) -> ph_items_MV_IM_vector 
+# c(ph_items_MV_IM_vector, )
+```
+
+## Pull repletion events from metaview databse
+### Potassium 
+We will now use the filtered ids for the two additive solutions above to pull electrolyte repletions from the `inputevents_mv` table.
+```{r}
+inputevents_mv <- tbl_mimic(inputevents_mv)
+
+inputevents_mv %>%
+  filter(itemid %in% k_items_MV_IM_vector) %>%
+  select(subject_id, hadm_id,icustay_id, linkorderid, orderid, itemid, starttime, endtime, amount, amountuom, rate, rateuom, statusdescription, ordercomponenttypedescription,cgid, ordercategoryname, secondaryordercategoryname, ordercategorydescription, patientweight) %>%
+  filter(!statusdescription == "Rewritten") %>%
+  rename(itemid.repletion = itemid) -> repEventsK
+
+repEventsK
+```
+
+### Magnesium
+```{r}
+inputevents_mv %>%
+  filter(itemid %in% mg_items_MV_IM_vector) %>%
+    select(subject_id, hadm_id,icustay_id, linkorderid, orderid, itemid, starttime, endtime, amount, amountuom, rate, rateuom, statusdescription, ordercomponenttypedescription,cgid, ordercategoryname, secondaryordercategoryname, ordercategorydescription, patientweight) %>%
+  filter(!statusdescription == "Rewritten") %>%
+  rename(itemid.repletion = itemid) -> repEventsMg
+
+repEventsMg
+```
+
+### Calcium
+```{r}
+inputevents_mv %>%
+  filter(itemid %in% ca_items_MV_IM_vector) %>%
+      select(subject_id, hadm_id,icustay_id, linkorderid, orderid, itemid, starttime, endtime, amount, amountuom, rate, rateuom, statusdescription, ordercomponenttypedescription,cgid, ordercategoryname, secondaryordercategoryname, ordercategorydescription, patientweight) %>%
+  rename(itemid.repletion = itemid) -> repEventsCa
+
+repEventsCa
+```
+### Phosphate
+```{r}
+inputevents_mv %>%
+  filter(itemid %in% ph_items_MV_IM_vector) %>%
+     select(subject_id, hadm_id,icustay_id, linkorderid, orderid, itemid, starttime, endtime, amount, amountuom, rate, rateuom, statusdescription, ordercomponenttypedescription,cgid, ordercategoryname, secondaryordercategoryname, ordercategorydescription, patientweight) %>%
+  filter(!statusdescription == "Rewritten") %>%
+  rename(itemid.repletion = itemid) -> repEventsPh
+
+repEventsPh
+```
+
+
+## Join tables containing repletion events and lab events 
+Both the tables containing the lab draws and the repletion events have been extracted. We can now join them to begin analyzing the relationship between them. 
+
+In addition to joining the tables, we have renamed the column corresponding to the moment the fluid collection for the lab value was recorded, `charttime`, as `charttime.lab` for clarity. 
+
+
+```{r Join Repletions and Lab Events}
+repEventsK %>% 
+  inner_join(labEventsK, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  distinct() %>%
+  rename(charttime.lab = charttime) %>%
+  collect() -> k_lab_repletions_MV_new
+
+
+#Magnesium
+repEventsMg %>% 
+  inner_join(labEventsMg, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  distinct() %>%
+  rename(charttime.lab = charttime) %>%
+  collect() -> mg_lab_repletions_MV_new
+
+mg_lab_repletions_MV_new
+
+#Calcium
+repEventsCa %>%
+  inner_join(labEventsCa, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  distinct() %>%
+  rename(charttime.lab = charttime) %>%
+  collect() -> ca_lab_repletions_MV_new
+
+ca_lab_repletions_MV_new
+#Phosphate
+repEventsPh %>% 
+  inner_join(labEventsPh, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  distinct() %>%
+  rename(charttime.lab = charttime) %>%
+  collect() -> ph_lab_repletions_MV_new
+
+ph_lab_repletions_MV_new
+
+#Combine into one dataset
+all_repletions_MV_new_AEs <- bind_rows(list( potassium = k_lab_repletions_MV_new, magnesium = mg_lab_repletions_MV_new, calcium = ca_lab_repletions_MV_new, phosphate = ph_lab_repletions_MV_new), .id = "Electrolyte")
+
+```
+#Hadmi Table
+```{r}
+#Load up all of the relevant hadm_ids to exclude in a single table
+#Pull ICD9 codes stored in CSVs from the last electrolyte paper 
+setwd("~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Codes/")
+my_files = list.files(path = "/Users/mousaghannnam/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Codes/", pattern = "*.csv", full.names = FALSE)
+icd9_codes <- lapply(my_files, read.csv)
+names(icd9_codes) <- gsub("\\.spec.csv$", "", my_files)
+icd9_codes_table <- plyr::ldply(icd9_codes, data.frame)
+
+#Takes the compilation of CSVs in their original state, formats them, and extracts the ICD9 Code
+getCodes <- function(codeName){
+  icd9_codes_table %>%
+    filter(.id == codeName) %>%
+    filter(code_standard_name == "ICD9") %>%
+    select(code) %>%
+    mutate_all(~str_remove_all(as.character(.x), '\\.')) %>% 
+    unlist() -> codeVec
+  return(codeVec)
+}
+
+#Create a running list of all ICD9 codes that we want to exclude
+icd9codesList <- lapply(names(icd9_codes), getCodes)
+names(icd9codesList) <- names(icd9_codes)
+
+#Function to return ICD9 hospital admissions from ICD9 codes
+get_hadm_IDs <- function(codeList){
+  icd9_dict %>%
+    filter(icd9_code %in% codeList) %>%
+    select(hadm_id) -> hadm_id_list
+  return(hadm_id_list)
+}
+
+#Create a running list of hospital admissions to exclude
+hadm_id_List <- lapply(icd9codesList, get_hadm_IDs)
+
+
+#Some ICD9 codes could not be found in the previous files, or were retrieved using other methods, so we retrieved them here. 
+#Transfusion of packed cells  
+icd9_pRBC <- tbl_mimic(d_icd_procedures) %>%
+  filter(short_title %ilike% "RBC%" | short_title %ilike% "packed%") 
+
+tbl_mimic(procedures_icd) %>%
+  filter(icd9_code == "9904") %>%
+  mutate(is_pRBC = icd9_code == "9904")  -> procedures_icd
+
+hadm_id_transfusion <- tbl_mimic(procedures_icd) %>%
+  filter(icd9_code == "9904") %>%
+  mutate(is_pRBC = icd9_code == "9904") %>%
+  select(hadm_id) 
+  
+hadm_id_List[["prbc"]] = hadm_id_transfusion #Add to the list
+
+##Nutritional deficiency 
+icd9_dict %>%
+  filter(short_title %ilike% "nutrition%") %>%
+  distinct(icd9_code, short_title) 
+
+#Codes for Nutritional Deficiency NEC and Nutritional Deficiency NOS
+codes_ND <- c("2698", "2699")
+
+icd9_dict %>%
+  filter(icd9_code == "2698" | icd9_code == "2699") %>%
+  select(hadm_id) -> hadm_id_NutDef
+
+icd9_dict %>%
+  filter(icd9_code %in% codes_ND) %>%
+  mutate(is_PTN = (icd9_code == "2698" | icd9_code == "2699" ))
+
+hadm_id_List[["nutrit-def"]] = hadm_id_NutDef #Add to the list
+
+
+admissions <- tbl_mimic("admissions")
+patients <- tbl(con, dbplyr::in_schema("mimiciii", "patients"))
+#Age is greater than 18
+admissions %>%
+  inner_join(patients, by = c("subject_id")) %>%
+  select(hadm_id, admittime, dob) %>%
+  print() -> all_admissions
+
+all_admissions %>%
+  dplyr::mutate(age = date_part("year", admittime) - date_part("year", dob)) %>%
+  dplyr::mutate(age = age - ifelse(
+    date_part("month", admittime) < date_part("month", dob) |
+      (date_part("month", admittime) == date_part("month", dob) &
+         date_part("day", admittime) < date_part("day", dob)
+      ),
+    1,
+    0
+  )) %>%
+  filter(age < 18) %>%
+  select(hadm_id) -> hadm_id_pediatrics
+
+names(hadm_id_List)
+hadm_id_List[["pediatrics"]] = hadm_id_pediatrics #Add to the list
+#Filter out patients with MDRD below 30 
+d_labitems %>%
+  filter(str_detect(tolower(label), "gfr") |str_detect(tolower(label), "mdrd")) %>%
+  select(itemid) %>%
+  collect() -> MDRD_Code
+
+labevents %>%
+  filter(itemid == !!MDRD_Code$itemid) %>%
+  select(valuenum) %>%
+  filter(!is.na(valuenum)) %>%
+  collect() -> MDRD
+
+hadm_id_table <- plyr::ldply(hadm_id_List, data.frame)
+
+```
+
+
+
+#Create the full dataset 
+```{r}
+all_repletions_MV_new_AEs %>%
+  filter(Electrolyte != "calcium") %>%
+  mutate(charttime.lab= as_datetime(charttime.lab), endtime=as_datetime(endtime), starttime = as_datetime(starttime)) %>%
+  mutate(isRecentPre = difftime(starttime, charttime.lab, units = "hours") <= 24 & difftime(starttime, charttime.lab, units = "hours") > 0 ) %>%
+  mutate(isRecentPost = difftime(endtime, charttime.lab, units = "hours") >= -24 & difftime(endtime, charttime.lab, units = "hours") < 0 ) %>%
+    mutate(isNotRecentPre = difftime(starttime, charttime.lab, units = "hours") > 24, isNotRecentPost =  difftime(endtime, charttime.lab, units = "hours") < -24) -> all_electrolyte_repLabEvents
+
+all_electrolyte_repLabEvents %>% #Run exclusions on all of them 
+  ungroup()%>%
+  anti_join(hadm_id_table, by = "hadm_id") -> all_electrolyte_repLabEvents
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  mutate(is_extraneous_value = case_when((Electrolyte == "potassium" & isRecentPre == TRUE & valuenum < 2) | (Electrolyte == "potassium" & isRecentPre == TRUE & valuenum > 7) ~ T, 
+    Electrolyte == "magnesium"  & valuenum > 5 ~ T,
+    Electrolyte == "magnesium"  & valuenum < 1 ~ T,
+    Electrolyte == "phosphate"  & valuenum > 5 ~ T,
+    Electrolyte == "phosphate"  & valuenum < 0.5 ~ T,
+     flag == "delta" ~ T, T ~ FALSE)) %>%
+    filter(is_extraneous_value == F) -> allEs_pre_post_repletions_MV_new_NoOutliers
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+mutate(abnormal_status = case_when( Electrolyte == "potassium" & valuenum > 5.2 ~ "aboveLimit",
+  Electrolyte == "potassium"  & valuenum < 3.3 ~ "belowLimit", 
+  Electrolyte == "magnesium" & valuenum > 2.6 ~ "aboveLimit",
+  Electrolyte == "magnesium"  & valuenum < 1.8 ~ "belowLimit", 
+  Electrolyte == "calcium"  & flag == "abnormal" & valuenum > 1.32 ~ "aboveLimit",
+  Electrolyte == "calcium"  & flag == "abnormal" & valuenum < 1.12 ~ "belowLimit",
+  Electrolyte == "phosphate"  & valuenum > 4.6 ~ "aboveLimit",
+  Electrolyte == "phosphate"  & valuenum < 2.7 ~ "belowLimit", 
+  T ~ "normalLimits")) -> allEs_pre_post_repletions_MV_new_NoOutliers
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  filter((abnormal_status == "normalLimits" & is.na(flag)) | (abnormal_status == "belowLimit" & flag == "abnormal") | (abnormal_status == "aboveLimit" & flag == "abnormal")) -> allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>% 
+  filter(isRecentPre) %>% 
+  group_by(subject_id, hadm_id,charttime.lab, Electrolyte) %>%
+  mutate(isMostRecentRepletion = starttime == min(starttime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id,hadm_id,starttime,endtime,Electrolyte) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == max(charttime.lab)) %>%
+  mutate(numberOfLabValues = case_when(
+    n() == 1 ~ "1",
+    n() == 2 ~ "2", 
+    n() >=  3 ~ "3+"))  %>% 
+  ungroup() -> postExclusionAll_new_pre
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  filter(isRecentPost) %>% 
+  group_by(subject_id, hadm_id,charttime.lab,Electrolyte) %>%
+  mutate(isMostRecentRepletion = endtime == max(endtime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id,hadm_id,starttime,endtime,Electrolyte) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == min(charttime.lab)) %>%
+  mutate(numberOfLabValues = case_when(
+    n() == 1 ~ "1",
+    n() == 2 ~ "2", 
+    n() >=  3 ~ "3+"))  %>% 
+  ungroup()  -> postExclusionAll_new_post
+
+postExclusionAll_new_preAndPost_within24Hrs <- bind_rows(list(pre_repletion = postExclusionAll_new_pre, post_repletion = postExclusionAll_new_post), .id = "preVsPost")
+
+#Scenario A
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  filter(isNotRecentPre, !isRecentPre,!isRecentPost) -> scenarioANonRepletions
+
+
+
+#Scenario B 
+postExclusionAll_new_preAndPost_within24Hrs %>%
+  group_by(subject_id,hadm_id,Electrolyte, linkorderid) %>%  
+  mutate(isPreAndPost = any(isRecentPre) & any(isRecentPost) == TRUE) %>%
+  filter(isPreAndPost) %>%
+  mutate(is1L = (isRecentPre == TRUE & numberOfLabValues == 1)) %>%
+  mutate(isML = (isRecentPre == TRUE & numberOfLabValues > 1)) -> pairedDataExcluded
+
+pairedDataExcluded %>% 
+  filter(is1L | isRecentPost) %>%
+  filter(isMostRecentLabEvent) -> scenarioBRepletions
+
+#Scenario C 
+pairedDataExcluded %>% 
+  filter(isML | isRecentPost) %>%
+  filter(isMostRecentLabEvent) -> scenarioCRepletions
+
+repletedVsNonRepleted <- bind_rows(list("1L_1R"= scenarioBRepletions,"ML_1R" = scenarioCRepletions, "1L_NR" = scenarioANonRepletions), .id = "repleteVsNon")
+
+
+```
+

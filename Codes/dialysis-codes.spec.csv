@@ -1,0 +1,5 @@
+code_standard_name,code,description
+ICD9,V45.1,Renal dialysis status
+ICD9,V45.11,Renal dialysis status
+ICD9,V56.0,Renal dialysis encounter
+ICD-10,Z99.2,Dependence on renal dialysis

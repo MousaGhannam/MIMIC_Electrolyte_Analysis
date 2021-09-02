@@ -1,0 +1,1686 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+# library(effectsize)
+library(rstatix)
+library(ggpointdensity)
+library("stargazer")
+```
+
+
+```{r}
+
+# COHENS D STATISTIC
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "potassium") %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "magnesium") %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "phosphate") %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+
+# COHENS D STATISTIC
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "potassium") %>%
+  filter(repleteVsNon == "1L_1R") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "potassium") %>%
+  filter(repleteVsNon == "ML_1R") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "magnesium") %>%
+  filter(repleteVsNon == "1L_1R") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "magnesium") %>%
+  filter(repleteVsNon == "ML_1R") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "phosphate") %>%
+  filter(repleteVsNon == "1L_1R") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+
+repletedVsNonRepleted %>% #Amount of DISTINCT Repletion Events left 
+  ungroup()%>%
+  filter(Electrolyte == "phosphate") %>%
+  filter(repleteVsNon == "ML_1R") %>%
+  cohens_d(formula = valuenum ~ preVsPost)
+```
+
+```{r}
+repletedVsNonRepleted %>% 
+  filter(repleteVsNon != "1L_NR") %>%
+  select(Electrolyte, preVsPost, valuenum, linkorderid) %>%
+  group_by(Electrolyte,linkorderid, preVsPost) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(id_cols = c(linkorderid,row,Electrolyte), names_from = "preVsPost", values_from = valuenum) %>%
+  select(-row) %>%
+  filter(!is.na(pre_repletion) | !is.na(post_repletion)) %>%
+  mutate(delta = post_repletion - pre_repletion) -> pairedDataLong
+
+#Subset the data by Electrolyte into different dataframes 
+pairedDataLong.K <- pairedDataLong %>% filter(Electrolyte == "potassium")
+pairedDataLong.Mg <- pairedDataLong %>% filter(Electrolyte == "magnesium")
+pairedDataLong.Ph <- pairedDataLong %>% filter(Electrolyte == "phosphate")
+
+#Generate plots for each subset of the data 
+plot(delta ~ pre_repletion, data = pairedDataLong.K)
+plot(delta ~ pre_repletion, data = pairedDataLong.Mg)
+plot(delta ~ pre_repletion, data = pairedDataLong.Ph)
+
+#Perform linear regression analysis across each electrolyte  
+pairedDataLong.K.lm <- lm(delta ~ pre_repletion, data = pairedDataLong.K)
+summary(pairedDataLong.K.lm)
+
+pairedDataLong.Mg.lm <- lm(delta ~ pre_repletion, data = pairedDataLong.Mg)
+summary(pairedDataLong.Mg.lm)
+
+pairedDataLong.Ph.lm <- lm(delta ~ pre_repletion, data = pairedDataLong.Ph)
+summary(pairedDataLong.Ph.lm)
+
+#Checking for homoscedasticity
+par(mfrow=c(2,2))
+plot(pairedDataLong.K.lm)
+par(mfrow=c(1,1))
+
+par(mfrow=c(2,2))
+plot(pairedDataLong.Mg.lm)
+par(mfrow=c(1,1))
+
+par(mfrow=c(2,2))
+plot(pairedDataLong.Ph.lm)
+par(mfrow=c(1,1))
+
+#Create GG Plots
+pairedDataLong.K.graph <- ggplot(pairedDataLong.K, aes(x=pre_repletion, y=delta)) + geom_pointdensity() +
+                     # geom_point(fill = "white", color = "black", shape  = 1) + 
+  # stat_density_2d(aes(fill = ..level..), geom="polygon") +
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 2.5, label.y = 5) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value") + scale_x_continuous(limits = c(2,7) )
+
+pairedDataLong.Mg.graph <- ggplot(pairedDataLong.Mg, aes(x=pre_repletion, y=delta))+ geom_pointdensity() +
+                     geom_point(fill = "white", color = "black", shape  = 1) + 
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 1, label.y = 7) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value") 
+
+pairedDataLong.Ph.graph <- ggplot(pairedDataLong.Ph, aes(x=pre_repletion, y=delta))+ geom_pointdensity() +
+                     geom_point(fill = "white", color = "black", shape  = 1) + 
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 1, label.y = 7) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value")
+par(mfrow=c(2,2))
+pairedDataLong.K.graph
+pairedDataLong.Mg.graph
+pairedDataLong.Ph.graph
+par(mfrow=c(2,2))
+# 
+# ggarrange(pairedDataLong.K.graph, pairedDataLong.Mg.graph, pairedDataLong.Ca.graph, pairedDataLong.Ph.graph + rremove("x.text"), 
+#           labels = c("A", "B", "C", "D"),
+#           ncol = 2, nrow = 2)
+
+ggscatter(pairedDataLong,x = "pre_repletion", y="delta",facet.by = "Electrolyte" ) + xlim(0,5)
+gghistogram(pairedDataLong,x = "delta",facet.by = "Electrolyte") 
+```
+#Hopsital patterns
+```{r}
+
+#Comparing the different lab hours across each repletion scenario
+repletedVsNonRepleted %>%
+  filter(Electrolyte == "potassium") %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion" | is.na(preVsPost)) %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean = mean(valuenum, na.rm = T), sd = sd(valuenum, na.rm = T), n = n()) %>%
+  mutate(se = sd / sqrt(n)) %>%
+  pivot_wider(names_from = repleteVsNon, values_from = c(sd,se,n,mean)) %>%
+  mutate(se_ML = sqrt(se_1L_1R^2 + se_ML_1R^2),se_NR = sqrt(se_1L_1R^2 + se_1L_NR^2)) %>%
+  mutate(z_ML = (( mean_ML_1R - mean_1L_1R) / se_ML), z_NR = (( mean_1L_NR - mean_1L_1R) / se_NR)) %>%
+  mutate(is_lower_ML = z_ML < 0, is_lower_NR = z_NR < 0) %>%
+  mutate(P.z.ML = pnorm(z_ML,lower.tail = is_lower_ML), P.z.NR = pnorm(z_NR,lower.tail = is_lower_NR)) %>% 
+  mutate(ML_is_sig = P.z.ML <= 0.05, NL_is_sig = P.z.NR <= 0.05 ) 
+  
+repletedVsNonRepleted %>%
+  filter(Electrolyte == "magnesium") %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion" | is.na(preVsPost)) %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean = mean(valuenum, na.rm = T), sd = sd(valuenum, na.rm = T), n = n()) %>%
+  mutate(se = sd / sqrt(n)) %>%
+  pivot_wider(names_from = repleteVsNon, values_from = c(sd,se,n,mean)) %>%
+  mutate(se_ML = sqrt(se_1L_1R^2 + se_ML_1R^2),se_NR = sqrt(se_1L_1R^2 + se_1L_NR^2)) %>%
+  mutate(z_ML = (( mean_ML_1R - mean_1L_1R) / se_ML), z_NR = (( mean_1L_NR - mean_1L_1R) / se_NR)) %>%
+  mutate(is_lower_ML = z_ML < 0, is_lower_NR = z_NR < 0) %>%
+  mutate(P.z.ML = pnorm(z_ML,lower.tail = is_lower_ML), P.z.NR = pnorm(z_NR,lower.tail = is_lower_NR)) %>% 
+  mutate(ML_is_sig = P.z.ML <= 0.05, NL_is_sig = P.z.NR <= 0.05 )
+
+repletedVsNonRepleted %>%
+  filter(Electrolyte == "phosphate") %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  filter(preVsPost == "pre_repletion" | is.na(preVsPost)) %>%
+  group_by(LabHour, repleteVsNon) %>%
+  summarize(mean = mean(valuenum, na.rm = T), sd = sd(valuenum, na.rm = T), n = n()) %>%
+  mutate(se = sd / sqrt(n)) %>%
+  pivot_wider(names_from = repleteVsNon, values_from = c(sd,se,n,mean)) %>%
+  mutate(se_ML = sqrt(se_1L_1R^2 + se_ML_1R^2),se_NR = sqrt(se_1L_1R^2 + se_1L_NR^2)) %>%
+  mutate(z_ML = (( mean_ML_1R - mean_1L_1R) / se_ML), z_NR = (( mean_1L_NR - mean_1L_1R) / se_NR)) %>%
+  mutate(is_lower_ML = z_ML < 0, is_lower_NR = z_NR < 0) %>%
+  mutate(P.z.ML = pnorm(z_ML,lower.tail = is_lower_ML), P.z.NR = pnorm(z_NR,lower.tail = is_lower_NR)) %>% 
+  mutate(ML_is_sig = P.z.ML <= 0.05, NL_is_sig = P.z.NR <= 0.05 )
+
+#Comparing the different repletion scarios across each lab hour
+
+
+
+```
+
+# Effect size of various groups
+
+## Creating separate dataset for ALL patients without excluding by certain ICD codes. 
+```{r}
+all_repletions_MV_new_AEs %>%
+  filter(Electrolyte != "calcium") %>%
+  mutate(charttime.lab= as_datetime(charttime.lab), endtime=as_datetime(endtime), starttime = as_datetime(starttime)) %>%
+  mutate(isRecentPre = difftime(starttime, charttime.lab, units = "hours") <= 24 & difftime(starttime, charttime.lab, units = "hours") > 0 ) %>%
+  mutate(isRecentPost = difftime(endtime, charttime.lab, units = "hours") >= -24 & difftime(endtime, charttime.lab, units = "hours") < 0 ) %>%
+    mutate(isNotRecentPre = difftime(starttime, charttime.lab, units = "hours") > 24, isNotRecentPost =  difftime(endtime, charttime.lab, units = "hours") < -24) -> all_electrolyte_repLabEvents
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  mutate(is_extraneous_value = case_when((Electrolyte == "potassium" & isRecentPre == TRUE & valuenum < 2) | (Electrolyte == "potassium" & isRecentPre == TRUE & valuenum > 7) ~ T, 
+    Electrolyte == "magnesium"  & valuenum > 5 ~ T,
+    Electrolyte == "magnesium"  & valuenum < 1 ~ T,
+    Electrolyte == "phosphate"  & valuenum > 5 ~ T,
+    Electrolyte == "phosphate"  & valuenum < 0.5 ~ T,
+     flag == "delta" ~ T, T ~ FALSE)) %>%
+    filter(is_extraneous_value == F) -> allEs_pre_post_repletions_MV_new_NoOutliers
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+mutate(abnormal_status = case_when( Electrolyte == "potassium" & valuenum > 5.2 ~ "aboveLimit",
+  Electrolyte == "potassium"  & valuenum < 3.3 ~ "belowLimit", 
+  Electrolyte == "magnesium" & valuenum > 2.6 ~ "aboveLimit",
+  Electrolyte == "magnesium"  & valuenum < 1.8 ~ "belowLimit", 
+  Electrolyte == "calcium"  & flag == "abnormal" & valuenum > 1.32 ~ "aboveLimit",
+  Electrolyte == "calcium"  & flag == "abnormal" & valuenum < 1.12 ~ "belowLimit",
+  Electrolyte == "phosphate"  & valuenum > 4.6 ~ "aboveLimit",
+  Electrolyte == "phosphate"  & valuenum < 2.7 ~ "belowLimit", 
+  T ~ "normalLimits")) -> allEs_pre_post_repletions_MV_new_NoOutliers
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  filter((abnormal_status == "normalLimits" & is.na(flag)) | (abnormal_status == "belowLimit" & flag == "abnormal") | (abnormal_status == "aboveLimit" & flag == "abnormal")) -> allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>% 
+  filter(isRecentPre) %>% 
+  group_by(subject_id, hadm_id,charttime.lab, Electrolyte) %>%
+  mutate(isMostRecentRepletion = starttime == min(starttime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id,hadm_id,starttime,endtime,Electrolyte) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == max(charttime.lab)) %>%
+  mutate(numberOfLabValues = case_when(
+    n() == 1 ~ "1",
+    n() == 2 ~ "2", 
+    n() >=  3 ~ "3+"))  %>% 
+  ungroup() -> postExclusionAll_new_pre
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  filter(isRecentPost) %>% 
+  group_by(subject_id, hadm_id,charttime.lab,Electrolyte) %>%
+  mutate(isMostRecentRepletion = endtime == max(endtime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id,hadm_id,starttime,endtime,Electrolyte) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == min(charttime.lab)) %>%
+  mutate(numberOfLabValues = case_when(
+    n() == 1 ~ "1",
+    n() == 2 ~ "2", 
+    n() >=  3 ~ "3+"))  %>% 
+  ungroup()  -> postExclusionAll_new_post
+
+postExclusionAll_new_preAndPost_within24Hrs <- bind_rows(list(pre_repletion = postExclusionAll_new_pre, post_repletion = postExclusionAll_new_post), .id = "preVsPost")
+
+#Scenario A
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  filter(isNotRecentPre, !isRecentPre,!isRecentPost) -> scenarioANonRepletions
+
+
+#Scenario B 
+postExclusionAll_new_preAndPost_within24Hrs %>%
+  group_by(subject_id,hadm_id,Electrolyte, linkorderid) %>%  
+  mutate(isPreAndPost = any(isRecentPre) & any(isRecentPost) == TRUE) %>%
+  filter(isPreAndPost) %>%
+  mutate(is1L = (isRecentPre == TRUE & numberOfLabValues == 1)) %>%
+  mutate(isML = (isRecentPre == TRUE & numberOfLabValues > 1)) -> pairedDataExcluded
+
+pairedDataExcluded %>% 
+  filter(is1L | isRecentPost) %>%
+  filter(isMostRecentLabEvent) -> scenarioBRepletions
+  
+
+#Scenario C 
+pairedDataExcluded %>% 
+  filter(isML | isRecentPost) %>%
+  filter(isMostRecentLabEvent) -> scenarioCRepletions
+
+allPatientsNoExclusions <- bind_rows(list("1L_1R"= scenarioBRepletions,"ML_1R" = scenarioCRepletions, "1L_NR" = scenarioANonRepletions), .id = "repleteVsNon")
+
+```
+
+## Group Effects
+```{r}
+#Here's just a list of all the possible HADMI code groups offered in this df 
+hadm_id_table %>%
+  distinct(.id)
+```
+
+
+### CKD
+```{r}
+hadm_id_table %>%
+  filter(.id == "ckd-codes") -> ckd_hadm_ids
+
+hadm_id_table %>%
+  filter(!.id == "ckd-codes") -> anti_ckd_hadm_ids
+
+allPatientsNoExclusions %>%
+  ungroup() %>%
+  anti_join(anti_ckd_hadm_ids, by = "hadm_id") %>%
+  semi_join(ckd_hadm_ids, by = "hadm_id") %>%
+  filter(repleteVsNon != "1L_NR") -> ckd_df
+
+ckd_with_all <- bind_rows(list("ckd"= ckd_df,"control" = repletedVsNonRepleted), .id = "subgroup")
+
+ckd_with_all %>%
+  filter(Electrolyte == "potassium") %>%
+  filter(preVsPost == "pre_repletion") %>%
+   cohens_d(.,formula = valuenum ~ subgroup)
+
+ckd_with_all %>%
+  filter(Electrolyte == "magnesium") %>%
+  filter(preVsPost == "pre_repletion") %>%
+   cohens_d(.,formula = valuenum ~ subgroup)
+
+ckd_with_all %>%
+  filter(Electrolyte == "phosphate") %>%
+  filter(preVsPost == "pre_repletion") %>%
+   cohens_d(.,formula = valuenum ~ subgroup)
+
+```
+### AKI
+
+```{r}
+hadm_id_table %>%
+  filter(.id == "aki-codes") -> aki_hadm_ids
+
+allPatientsNoExclusions %>%
+  ungroup() %>%
+  semi_join(aki_hadm_ids, by = "hadm_id") %>%
+  filter(repleteVsNon != "1L_NR") -> aki_df
+
+aki_with_all <- bind_rows(list("ckd"= aki_df,"control" = repletedVsNonRepleted), .id = "subgroup")
+
+aki_with_all %>%
+  filter(Electrolyte == "potassium") %>%
+  filter(preVsPost == "pre_repletion") %>%
+   cohens_d(.,formula = valuenum ~ subgroup)
+
+aki_with_all %>%
+  filter(Electrolyte == "magnesium") %>%
+  filter(preVsPost == "pre_repletion") %>%
+   cohens_d(.,formula = valuenum ~ subgroup)
+
+aki_with_all %>%
+  filter(Electrolyte == "phosphate") %>%
+  filter(preVsPost == "pre_repletion") %>%
+   cohens_d(.,formula = valuenum ~ subgroup)
+
+
+```
+### AFIB
+```{r}
+
+
+```
+  
+### Loop Diuretics 
+Function for assessing whether or not was on med at time of repletion.  
+```{r}
+  repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>% 
+  pull(icustay_id)  -> repletedVsNonRepleted_icustay_ids
+
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  select(subject_id, hadm_id, icustay_id, valuenum, repleteVsNon, Electrolyte,charttime.lab) %>%
+  mutate(t2 = charttime.lab - ddays(1)) %>% #t2 refers to 1 day prior to lab draw
+  setDT(.) -> repletedVsNonRepleted.dt  
+  
+
+is_on_meds <- function(itemid_med, medname) {
+ 
+  tbl_mimic(inputevents_mv) %>%
+      filter(icustay_id %in% repletedVsNonRepleted_icustay_ids) %>%
+     filter(endtime >= starttime) %>%
+     filter(itemid %in% itemid_med) %>%
+      select(subject_id, icustay_id, hadm_id, starttime, endtime, itemid,amount, amountuom,linkorderid) %>%
+     collect() -> icustays_involving_meds
+  
+setDT(icustays_involving_meds) 
+ 
+setkey(repletedVsNonRepleted.dt, subject_id, hadm_id, icustay_id,t2,charttime.lab)
+setkey(icustays_involving_meds,subject_id,hadm_id,icustay_id, starttime,endtime)
+
+foverlaps(repletedVsNonRepleted.dt,icustays_involving_meds,by.y = c("subject_id","hadm_id", "icustay_id", "starttime","endtime"),by.x = c("subject_id","hadm_id", "icustay_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) %>%
+  as.data.frame() %>%
+  mutate(!!quo_name(medname) := case_when(is.na(starttime) == TRUE ~ "non-medicated",
+                                   is.na(starttime) == FALSE ~ "medicated")) -> med_df
+
+
+medname_test <- "furosemide"
+# paste0("is_",medname_test)
+
+
+  
+  return(med_df)
+} 
+medname_test <- "furosemide"
+is_on_meds(c(228340,221794),medname = medname_test) -> furosemide_df
+
+furosemide_df %>%
+  filter(Electrolyte == "potassium") %>%
+  cohens_d(valuenum ~ furosemide)
+
+furosemide_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  cohens_d(valuenum ~ furosemide)
+
+furosemide_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  cohens_d(valuenum ~ furosemide)
+```
+
+
+The below code chunk could be all of them combined? 
+```{r}
+
+```
+
+#### Lasix/Furosemide
+```{r}
+d_items %>%
+  filter(dbsource == "metavision") %>%
+  filter(linksto == "inputevents_mv"| linksto =="chartevents") %>%
+  filter(label %ilike% "%furosemide%")
+
+itemid_med <- c(228340,221794)
+
+medname <- "furosemide"
+
+is_on_meds(itemid_med,medname = "furosemide") -> furosemide_df
+
+furosemide_df %>%
+  filter(Electrolyte == "potassium") %>%
+  cohens_d(valuenum ~ furosemide)
+
+furosemide_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  cohens_d(valuenum ~ furosemide)
+
+furosemide_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  cohens_d(valuenum ~ furosemide)
+
+```
+##### Attempt 2 
+```{r}
+prescriptions <- tbl_mimic("prescriptions")
+prescriptions %>%
+  filter(drug %ilike% "furosemide" |drug %ilike% "Bumetanide" | drug %ilike% "Torsemide" )
+  filter(drug %ilike% "Torsemide")
+
+
+prescriptions %>%
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> prescriptions_hadmids
+
+prescriptions_hadmids %>%
+    filter(drug %ilike% "furosemide") %>%
+    filter(!is.na(enddate), startdate <= enddate) %>%
+    collect()-> prescriptions_df_furosemide
+
+setDT(prescriptions_df_furosemide)
+setkey(prescriptions_df_furosemide,subject_id, hadm_id, startdate, enddate)
+
+foverlaps(repletedVsNonRepleted.dt,prescriptions_df_furosemide,by.y = c("subject_id","hadm_id","startdate","enddate"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> furosemide_df
+
+ furosemide_df %>%
+  filter(Electrolyte == "potassium") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+
+ furosemide_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+
+furosemide_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+ 
+```
+
+
+#### Hydrochlorothiazide
+NONE WERE FOUND
+```{r}
+d_items %>%
+  filter(dbsource == "metavision") %>%
+  filter(linksto == "inputevents_mv"| linksto =="chartevents") %>%
+  filter(label %ilike% "%aspirin%")
+
+itemid_med <- c(228340,221794)
+
+medname <- "hydrochlorothiazide"
+
+is_on_meds(itemid_med,medname = "hydrochlorothiazide") -> hydrochlorothiazide_df
+
+furosemide_df %>%
+  filter(Electrolyte == "potassium") %>%
+  cohens_d(valuenum ~ hydrochlorothiazide)
+
+furosemide_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  cohens_d(valuenum ~ hydrochlorothiazide)
+
+furosemide_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  cohens_d(valuenum ~ hydrochlorothiazide)
+
+```
+##### Attempt 2
+```{r}
+prescriptions <- tbl_mimic("prescriptions")
+
+prescriptions %>%
+  filter(drug %ilike% "hydrochlorothiazide" |drug %ilike% "Chlorothiazide" | drug %ilike% "Indapamide" | drug %ilike% "Metolazone" | drug %ilike% "Chlorthalidone")
+
+prescriptions %>%
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> prescriptions_hadmids
+
+prescriptions_hadmids %>%
+    filter(drug %ilike% "hydrochlorothiazide") %>%
+    filter(!is.na(enddate), startdate <= enddate) %>%
+    collect()-> prescriptions_df_hydrochloro
+
+setDT(prescriptions_df_hydrochloro)
+setkey(prescriptions_df_hydrochloro,subject_id, hadm_id, startdate, enddate)
+
+foverlaps(repletedVsNonRepleted.dt,prescriptions_df_hydrochloro,by.y = c("subject_id","hadm_id","startdate","enddate"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> hydrochloro_df
+
+ hydrochloro_df %>%
+   filter(Electrolyte == "potassium") %>%
+ mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+ 
+ hydrochloro_df %>%
+   filter(Electrolyte == "magnesium") %>%
+ mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+ 
+ hydrochloro_df %>%
+   filter(Electrolyte == "phosphate") %>%
+ mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+ 
+```
+
+#### Acetazolamide/Diamox
+```{r}
+d_items %>%
+  filter(dbsource == "metavision") %>%
+  filter(linksto == "inputevents_mv"| linksto =="chartevents") %>%
+  filter(label %ilike% "%Na%")
+
+tbl_mimic(prescriptions) -> prescriptions
+
+prescriptions %>%
+  filter(drug %ilike% "%aspirin%")
+
+itemid_med <- c(228340,221794)
+
+medname <- "hydrochlorothiazide"
+
+is_on_meds(itemid_med,medname = "hydrochlorothiazide") -> hydrochlorothiazide_df
+
+furosemide_df %>%
+  filter(Electrolyte == "potassium") %>%
+  cohens_d(valuenum ~ hydrochlorothiazide)
+
+furosemide_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  cohens_d(valuenum ~ hydrochlorothiazide)
+
+furosemide_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  cohens_d(valuenum ~ hydrochlorothiazide)
+```
+##### Attempt 2
+```{r}
+prescriptions <- tbl_mimic("prescriptions")
+
+prescriptions %>%
+  filter(drug %ilike% "Acetazolamide" )
+
+prescriptions %>%
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> prescriptions_hadmids
+
+prescriptions_hadmids %>%
+    filter(drug %ilike% "Acetazolamide") %>%
+    filter(!is.na(enddate), startdate <= enddate) %>%
+    collect()-> prescriptions_df_acetazolamide
+
+setDT(prescriptions_df_acetazolamide)
+setkey(prescriptions_df_acetazolamide,subject_id, hadm_id, startdate, enddate)
+
+foverlaps(repletedVsNonRepleted.dt,prescriptions_df_acetazolamide,by.y = c("subject_id","hadm_id","startdate","enddate"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> acetazolamide_df
+
+ acetazolamide_df %>%
+  filter(Electrolyte == "potassium") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+ 
+ acetazolamide_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+`
+ 
+ acetazolamide_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+`
+```
+
+#### Spironolactone
+```{r}
+prescriptions <- tbl_mimic("prescriptions")
+
+prescriptions %>%
+  filter(drug %ilike% "Midamor" )
+
+prescriptions %>%
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> prescriptions_hadmids
+
+prescriptions_hadmids %>%
+    filter(drug %ilike% "Spironolactone" | drug %ilike% "Eplerenone"| drug %ilike% "Triamterene" ) %>%
+    filter(!is.na(enddate), startdate <= enddate) %>%
+    collect()-> prescriptions_df_Spironolactone
+
+setDT(prescriptions_df_Spironolactone)
+setkey(prescriptions_df_Spironolactone,subject_id, hadm_id, startdate, enddate)
+
+foverlaps(repletedVsNonRepleted.dt,prescriptions_df_Spironolactone,by.y = c("subject_id","hadm_id","startdate","enddate"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> Spironolactone_df
+
+ Spironolactone_df %>%
+  filter(Electrolyte == "potassium") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+ 
+ Spironolactone_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+
+ 
+ Spironolactone_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  mutate(is_medicated = case_when(is.na(row_id) == TRUE ~ "non-medicated",
+                                   is.na(row_id) == FALSE ~ "medicated")) %>%
+     cohens_d(valuenum ~ is_medicated)
+```
+
+#### IV vs PO 
+```{r}
+repletedVsNonRepleted
+
+```
+
+
+##Regression
+```{r}
+d_items <- tbl_mimic(d_items)
+inputevents_mv <- tbl_mimic(inputevents_mv)
+
+
+d_items %>%
+  filter(dbsource == "metavision") %>%
+  filter(linksto == "inputevents_mv"| linksto =="chartevents") %>%
+  filter(label %ilike% "%furosemide%")
+  
+
+repletedVsNonRepleted %>%
+  filter(preVsPost == "pre_repletion") %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  # mutate(isMiss= case_when(abnormal_status == "aboveLimit")  ~ T, T~ FALSE) %>%
+  group_by(Electrolyte, repleteVsNon, abnormal_status) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100) %>%
+  filter(abnormal_status == "aboveLimit")
+  
+repletedVsNonRepleted %>%
+  mutate(isPotassiumOutlier= case_when((Electrolyte == "potassium" & preVsPost == "pre_repletion" & valuenum >= 5)  ~ T, T~ FALSE)) %>%
+  filter(isPotassiumOutlier) -> potassiumOutliers
+
+potassiumOutliers %>%
+  select(subject_id, hadm_id, icustay_id, starttime, endtime) %>%
+  mutate(orderInterval = interval(starttime, starttime - ddays(1))) %>%
+  pull(icustay_id) -> potOuticustayid
+
+tbl_mimic(inputevents_mv) %>%
+  filter(icustay_id %in% potOuticustayid) %>%
+  select(icustay_id,starttime, endtime, itemid, amount, amountuom, rate,rateuom, storetime, cgid, orderid, linkorderid, ordercategoryname,secondaryordercategoryname, ordercategorydescription ) %>%
+  collect()-> full_outlier_inputevents_potassium
+
+tbl_mimic(d_items) %>%
+  filter(dbsource == "metavision" & linksto =="inputevents_mv") %>%
+  filter(str_detect(tolower(label), "dextrose") | str_detect(tolower(label), "insulin") | str_detect(tolower(label), "gluconate" ) | str_detect(tolower(label), "glucose" )) %>%
+  collect() -> hyperKalemiaItemOrders
+
+hyperKalemiaItemOrders %>% pull(itemid) -> hyperKalemiaItemOrders_ids
+
+tbl_mimic(inputevents_mv) %>%
+  filter(icustay_id %in% potOuticustayid) %>% 
+  filter(itemid %in% hyperKalemiaItemOrders_ids) %>%
+  collect() -> hyperKalemiaOrders_Potassium_Orders
+
+potassiumOutliers %>%
+  select(subject_id, hadm_id, icustay_id, starttime, endtime) %>%
+  mutate(orderInterval = interval(starttime, starttime - ddays(1))) %>%
+  left_join(hyperKalemiaOrders_Potassium_Orders, by = "icustay_id") %>%
+  mutate(hyperKalemiaInterval = interval(starttime.y, endtime.y)) %>%
+  filter(hyperKalemiaInterval %within% orderInterval) %>%
+  select(subject_id.x) %>%
+  distinct() %>%
+  count()
+
+repletedVsNonRepleted %>%
+  mutate(orderInterval = interval(starttime, starttime - ddays(1))) %>%
+  
+  
+
+d_labitems
+
+inputevents_mv 
+
+repletedVsNonRepleted %>% 
+  slice(1:10)
+
+#Find the interval from one day prior to the pre-repletion lab value in the data frame
+#Find the interval for the medications you want in inputevents_mv, which will include a start and endtime 
+#Join on the icustay_ids 
+#If they coincide, the flag it. 
+#Rinse and repeat for all of the rest of the medications 
+#Ideally create a function that checks this and flags it via a mutate column for ALL the medications of interest 
+#Check using a case_when function and the item_id 
+
+is_on_meds <- function(test_df, itemid_med, medname) {
+ 
+  test_df %>% pull(icustay_id) -> icustay_id_temp
+  
+  tbl_mimic(inputevents_mv) %>%
+     filter(icustay_id %in% icustay_id_temp) %>%
+     filter(itemid %in% itemid_med) %>%
+      select(subject_id, icustay_id, hadm_id, starttime, endtime, itemid,amount, amountuom) %>%
+     collect()-> icustays_involving_meds
+  
+  test_df %>%
+  select(subject_id, hadm_id, icustay_id, charttime.lab, linkorderid, valuenum, repleteVsNon, Electrolyte) %>%
+  mutate(pre_lab_interval = interval(charttime.lab, charttime.lab - ddays(1))) %>%
+  inner_join(icustays_involving_meds, by = c("icustay_id" = "icustay_id", "subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  mutate(infusion_interval = interval(starttime, endtime)) %>%
+  mutate(medname = infusion_interval %within% pre_lab_interval) %>%
+    filter(medname) -> df_checked
+  
+  return(df_checked)
+} 
+
+is_on_meds(test_df,c(228340,221794),"furosemide")
+
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  slice(1:1000) -> test_df
+
+#Testing Ground
+  test_df %>% pull(icustay_id) -> icustay_id_temp
+  
+  tbl_mimic(inputevents_mv) %>%
+     filter(icustay_id %in% icustay_id_temp) %>%
+     filter(itemid %in% c(228340,221794)) %>%
+      select(subject_id, icustay_id, hadm_id, starttime, endtime, itemid,amount, amountuom) %>%
+     collect()-> icustays_involving_meds
+  
+  test_df %>%
+  select(subject_id, hadm_id, icustay_id, charttime.lab, linkorderid, valuenum, repleteVsNon, Electrolyte) %>%
+  mutate(pre_lab_interval = interval(charttime.lab, charttime.lab - ddays(1))) %>%
+  left_join(icustays_involving_meds, by = c("icustay_id" = "icustay_id", "subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  mutate(infusion_interval = interval(starttime, endtime)) %>%
+  mutate(medname = infusion_interval %within% pre_lab_interval) %>%
+    filter(medname) -> df_checked
+
+  
+ test_df %>%
+  select(subject_id, hadm_id, icustay_id, linkorderid, valuenum, repleteVsNon, Electrolyte,charttime.lab) %>%
+  mutate(t2 = charttime.lab - ddays(1)) %>%
+  setDT(.) -> test_df
+
+#RESET KEYS 
+setkey(test_df, NULL)
+setkey(icustays_involving_meds, NULL)
+ 
+setDT(icustays_involving_meds)
+
+setkey(test_df, subject_id, hadm_id, icustay_id,t2,charttime.lab)
+setkey(test_df)
+setkey(icustays_involving_meds,subject_id,hadm_id,icustay_id, starttime,endtime)
+
+foverlaps(test_df,icustays_involving_meds,by.x = c("t2","charttime.lab"), type="any", mult = "last")
+
+foverlaps(icustays_involving_meds,test_df,by.x = c("subject_id","hadm_id", "icustay_id", "starttime","endtime"),by.y = c("subject_id","hadm_id", "icustay_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = 0L)
+
+#HERE'S THE WINNER ################################################
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>% 
+  pull(icustay_id)  -> repletedVsNonRepleted_icustay_ids
+
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  select(subject_id, hadm_id, icustay_id, valuenum, repleteVsNon, Electrolyte,charttime.lab) %>%
+  mutate(t2 = charttime.lab - ddays(1)) %>% #t2 refers to 1 day prior to lab draw
+  setDT(.) -> repletedVsNonRepleted.dt
+ 
+itemid_med <- c(228340,221794)
+
+  tbl_mimic(inputevents_mv) %>%
+      filter(icustay_id %in% repletedVsNonRepleted_icustay_ids) %>%
+     filter(endtime >= starttime) %>%
+     filter(itemid %in% itemid_med) %>%
+      select(subject_id, icustay_id, hadm_id, starttime, endtime, itemid,amount, amountuom,linkorderid) %>%
+     collect() -> icustays_involving_meds
+  
+setDT(icustays_involving_meds) 
+ 
+setkey(repletedVsNonRepleted.dt, subject_id, hadm_id, icustay_id,t2,charttime.lab)
+setkey(icustays_involving_meds,subject_id,hadm_id,icustay_id, starttime,endtime)
+
+foverlaps(repletedVsNonRepleted.dt,icustays_involving_meds,by.y = c("subject_id","hadm_id", "icustay_id", "starttime","endtime"),by.x = c("subject_id","hadm_id", "icustay_id", "t2","charttime.lab"),type = "within", mult = "last" ,nomatch = NA) %>%
+  as.data.frame() -> furosemide_df
+# medname_test <- "furosemide"
+# paste0("is_",medname_test)
+
+furosemide_df %>%
+  filter(Electrolyte == "potassium") %>%
+  # group_by(charttime.lab,t2,subject_id,icustay_id) %>%
+  # summarize(n=n()) %>%
+  # filter(n > 1) 
+  mutate(is_furosemide = case_when(is.na(starttime) == TRUE ~ "non-medicated",
+                                   is.na(starttime) == FALSE ~ "medicated")) %>%
+  # str()
+  # group_by(Electrolyte,is_furosemide) %>%
+  cohens_d(valuenum ~ is_furosemide)
+
+furosemide_df %>%
+  filter(Electrolyte == "magnesium") %>%
+  # group_by(charttime.lab,t2,subject_id,icustay_id) %>%
+  # summarize(n=n()) %>%
+  # filter(n > 1) 
+  mutate(is_furosemide = case_when(is.na(starttime) == TRUE ~ "non-medicated",
+                                   is.na(starttime) == FALSE ~ "medicated")) %>%
+  # str()
+  # group_by(Electrolyte,is_furosemide) %>%
+  cohens_d(valuenum ~ is_furosemide)
+
+furosemide_df %>%
+  filter(Electrolyte == "phosphate") %>%
+  # group_by(charttime.lab,t2,subject_id,icustay_id) %>%
+  # summarize(n=n()) %>%
+  # filter(n > 1) 
+  mutate(is_furosemide = case_when(is.na(starttime) == TRUE ~ "non-medicated",
+                                   is.na(starttime) == FALSE ~ "medicated")) %>%
+  # str()
+  # group_by(Electrolyte,is_furosemide) %>%
+  cohens_d(valuenum ~ is_furosemide)
+
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  select(subject_id, hadm_id, icustay_id, valuenum, repleteVsNon, Electrolyte,charttime.lab) %>%
+  group_by(charttime.lab,subject_id,icustay_id) %>%
+  summarize(n=n()) %>%
+  filter(n > 1)
+
+################################################################
+key(test_df)
+key(icustays_involving_meds)
+
+# test_df[icustays_involving_meds, on=list(t2 >= starttime, charttime.lab <= endtime ), nomatch=0][]
+
+icustays_involving_meds[with(icustays_involving_meds,starttime >= endtime),]
+
+#TRYING TO CREATE CUSTOM COLUMN NAMES...
+furosemide_df %>%
+  mutate(paste0("is_",!!quo_name(medname_test)) := is.na(starttime)) %>%
+  
+my_function <- function(col) {
+  repletedVsNonRepleted %>%
+      slice(1:10) %>%
+      mutate(!!quo_name(col) := 1) -> x
+  
+  return(x)
+}
+  my_function(medname_test)
+```
+
+```{r}
+require(data.table)
+require(lubridate)
+
+#create the data frames
+
+#x is a data table with a list of events to match against the different dates in x to see if there is overlap
+x = data.table(
+  eventid=c(1,2,3),
+  start  =mdy_hms(c('10/1/2016 04:30:00','10/1/2016 18:02:00','10/2/2016 14:21:00')),
+  end    =mdy_hms(c('10/1/2016 05:43:00','10/2/2016 01:23:00','10/4/2016 08:54:00'))
+)
+
+#y is a data table with a list of all dates
+y = data.table(
+  date =c('10/1/2016','10/2/2016','10/3/2016','10/4/2016','10/5/2016','10/6/2016'),
+  start=mdy_hms(c('10/1/2016 00:00:00','10/2/2016 00:00:00','10/3/2016 00:00:00','10/4/2016 00:00:00','10/5/2016 00:00:00','10/6/2016 00:00:00')),
+  end  =mdy_hms(c('10/1/2016 23:59:59','10/2/2016 23:59:59','10/3/2016 23:59:59','10/4/2016 23:59:59','10/5/2016 23:59:59','10/6/2016 23:59:59'))
+  )
+
+#set the key on y to match with
+setkey(y,start,end)
+
+#use the foverlaps function to match
+#
+#note that eventid 1 matches one date only
+#          eventid 2 matches two dates
+#          eventid 3 matches three dates
+#
+result <- foverlaps(x,y,type="any")
+
+#show results
+x
+y
+result
+
+
+
+require(data.table)
+set.seed(1L)
+n = 20e3L; k = 100e3L
+idx1 = sample(100, n, TRUE)
+idx2 = sample(100, n, TRUE)
+d1 = data.table(x = sample(letters[1:5], n, TRUE), 
+                start = pmin(idx1, idx2), 
+                end = pmax(idx1, idx2))
+
+d2 = data.table(x = sample(letters[1:15], k, TRUE), 
+                pos1 = sample(60:150, k, TRUE))
+foverlaps:
+system.time({
+    setkey(d1)
+    d2[, pos2 := pos1]
+    ans1 = foverlaps(d2, d1, by.x=1:3, type="within", nomatch=0L)
+})
+```
+
+## Multi-variable Regression
+```{r}
+#Labevents Table
+#Sodium:50983, 50983
+#Anion Gap: 50868
+#urine output: 51108, 51109
+#Creatine: 50912 (blood)
+# Hg: 220228
+#BUN: 51006
+#WBC: 51301
+#ICU
+#potassium
+#magnesium: 50960
+#phosphate: 50970
+#Chloride: 50902 (whole blood), 50806 (blood)
+#age: admissions? pateints? 
+#heart rate: 220045 (d_items)
+#Respiratory Rate: 220210 (d_items)
+#SpO2: 50817 
+#systolic bp: 226850 (d_items) or 220180 (noninvasive?)
+#diastolic bp: 226851 (d_items) or 220179 (noninvasive?)
+#Weight: (inputevents)
+#glucose: 50931 (blood_)
+#temperatue (many diff codes): 12757 (d_items)
+#LDH d_items: 220632
+d_labitems <- tbl_mimic("d_labitems")
+chartevents <- tbl_mimic("chartevents")
+inputevents_mv
+d_items
+chartevents
+d_labitems %>%
+  filter(label %ilike% "%potassium%")
+
+d_items %>%
+  filter(dbsource == "metavision") %>%
+  filter(linksto == "inputevents_mv"| linksto =="chartevents") %>%
+  filter(label %ilike% "%temp%")
+
+ repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>% 
+  pull(icustay_id)  -> repletedVsNonRepleted_icustay_ids
+
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  select(subject_id, hadm_id, icustay_id, valuenum, repleteVsNon, Electrolyte,charttime.lab) %>%
+  mutate(t2 = charttime.lab - ddays(1)) %>% #t2 refers to 1 day prior to lab draw
+  setDT(.) -> repletedVsNonRepleted.dt  
+  
+
+is_on_meds <- function(itemid_med, medname) {
+ 
+  tbl_mimic(inputevents_mv) %>%
+      filter(icustay_id %in% repletedVsNonRepleted_icustay_ids) %>%
+     filter(endtime >= starttime) %>%
+     filter(itemid %in% itemid_med) %>%
+      select(subject_id, icustay_id, hadm_id, starttime, endtime, itemid,amount, amountuom,linkorderid,ordercategoryname) %>%
+     collect() -> icustays_involving_meds
+  
+setDT(icustays_involving_meds) 
+ 
+setkey(repletedVsNonRepleted.dt, subject_id, hadm_id, icustay_id,t2,charttime.lab)
+setkey(icustays_involving_meds,subject_id,hadm_id,icustay_id, starttime,endtime)
+
+foverlaps(repletedVsNonRepleted.dt,icustays_involving_meds,by.y = c("subject_id","hadm_id", "icustay_id", "starttime","endtime"),by.x = c("subject_id","hadm_id", "icustay_id", "t2","charttime.lab"),type = "within", mult = "last" ,nomatch = NA) %>%
+  as.data.frame() %>%
+  mutate(!!quo_name(medname) := case_when(is.na(starttime) == TRUE ~ "non-medicated",
+                                   is.na(starttime) == FALSE ~ "medicated")) -> med_df
+
+
+medname_test <- "furosemide"
+# paste0("is_",medname_test)
+
+
+  
+  return(med_df)
+} 
+
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  select(subject_id, hadm_id, icustay_id, valuenum, repleteVsNon, Electrolyte,charttime.lab) %>%
+  mutate(t2 = charttime.lab - ddays(1)) %>% #t2 refers to 1 day prior to lab draw
+  setDT(.) -> repletedVsNonRepleted.dt  
+
+ repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>% 
+  pull(hadm_id)  -> repletedVsNonRepleted_hadm_ids
+
+labevents <- tbl_mimic("labevents")
+
+labevents %>% 
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) %>%
+  filter(itemid %in% 50983) %>%
+  select(-value, -valueuom) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect() -> labevents_df
+
+labevents_df 
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+foverlaps(repletedVsNonRepleted.dt,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> df_sodium
+foverlaps(repletedVsNonRepleted.dt,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA)
+
+############################################
+### Solution using lapply
+
+
+#####################
+
+labevents %>% 
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> labevents_haadmids
+
+
+```
+
+### Solution using lapply
+```{r}
+lapply(c(50868,50983),FUN = is_on_meds)
+
+labevents_haadmids %>%
+   filter(itemid %in% 50983) %>%
+    select(-value, -valueuom) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+is_on_meds <- function(itemid_med) {
+  
+  labevents_haadmids %>%
+   filter(itemid %in% 50983) %>%
+    select(-value, -valueuom) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+ 
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+    foverlaps(repletedVsNonRepleted.dt,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> df
+  return(df)
+} 
+
+```
+
+### Solution using sequenial foverlaps
+```{r}
+###
+
+ repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>% 
+  pull(hadm_id)  -> repletedVsNonRepleted_hadm_ids
+
+ repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>% 
+  pull(subject_id)  -> repletedVsNonRepleted_subject_ids
+
+labevents <- tbl_mimic("labevents")
+
+# mult_reg_df %>%
+#   select(-intime, -outtime) -> mult_reg_df
+
+labevents %>% 
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> labevents_haadmids
+
+
+chartevents <- tbl_mimic("chartevents")
+
+chartevents %>% 
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> chartevents_haadmids
+  
+
+outputevents <- tbl_mimic("outputevents") %>%
+  filter(itemid %in% 220045)
+
+outputevents %>% 
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) -> outputevents_haadmids
+
+transfers <- tbl_mimic("transfers")
+
+transfers %>%
+  filter(dbsource == "metavision") %>%
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) %>%
+  select(subject_id, hadm_id, curr_wardid,intime, outtime) -> transfers_hadmids
+
+
+repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  select(subject_id, hadm_id, icustay_id, valuenum, repleteVsNon, Electrolyte,patientweight, charttime.lab) %>%
+  mutate(t2 = charttime.lab - ddays(1), charttime.lab = charttime.lab - seconds(1)) %>% #t2 refers to 1 day prior to lab draw
+  setDT(.) -> repletedVsNonRepleted.dt  
+
+
+admissions %>%
+  inner_join(patients, by = c("subject_id")) %>%
+  select(hadm_id, admittime, dob) %>%
+    dplyr::mutate(age = date_part("year", admittime) - date_part("year", dob)) %>%
+  dplyr::mutate(age = age - ifelse(
+    date_part("month", admittime) < date_part("month", dob) |
+      (date_part("month", admittime) == date_part("month", dob) &
+         date_part("day", admittime) < date_part("day", dob)
+      ),
+    1,
+    0
+  )) %>%
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids) %>% 
+  select(-admittime, -dob) %>% 
+  collect() -> age_df
+  
+ 
+#Sodium
+ labevents_haadmids %>%
+   filter(itemid %in% 50983) %>%
+    select(-value, -valueuom,-row_id, -itemid, ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(repletedVsNonRepleted.dt,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_sodium" = valuenum) %>%
+  rename("flag_sodium" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#Anion gap 
+
+ labevents_haadmids %>%
+   filter(itemid %in% 50868) %>%
+    select(-value, -valueuom) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_anion_gap" = valuenum) %>%
+  rename("flag_anion_gap" = flag) %>%
+  select(-charttime, -charttime_2)-> mult_reg_df
+
+# Urine output 51108
+
+labevents_haadmids %>%
+  filter(itemid %in% 51108) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_urine_output" = valuenum) %>%
+  rename("flag_urine_output" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+# Creatine 50912
+
+labevents_haadmids %>%
+  filter(itemid %in% 50912) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_creatine" = valuenum) %>%
+  rename("flag_creatine" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+# Hemoglobin 50811
+
+labevents_haadmids %>%
+  filter(itemid %in% 50811) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_hemoglobin" = valuenum) %>%
+  rename("flag_hemoglobin" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#BUN: 51006
+labevents_haadmids %>%
+  filter(itemid %in% 51006) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_BUN" = valuenum) %>%
+  rename("flag_BUN" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#WBC: 51301
+labevents_haadmids %>%
+  filter(itemid %in% 51301) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_WBC" = valuenum) %>%
+  rename("flag_WBC" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#ICU
+transfers_hadmids %>%
+  filter(!is.na(outtime)) %>%
+  collect() -> transfers_df
+
+setDT(transfers_df)
+setkey(transfers_df,subject_id, hadm_id, intime, outtime)
+
+foverlaps(mult_reg_df,transfers_df,by.y = c("subject_id","hadm_id","intime","outtime"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  select(-intime, -outtime) -> mult_reg_df
+
+#Potassium: 50971
+labevents_haadmids %>%
+  filter(itemid %in% 50971) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  # mutate(charttime = charttime + seconds(1)) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_potassium" = valuenum) %>%
+  rename("flag_potassium" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+
+#magnesium: 50960
+labevents_haadmids %>%
+  filter(itemid %in% 50960) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  # mutate(charttime = charttime + seconds(1)) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_magnesium" = valuenum) %>%
+  rename("flag_magnesium" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#phosphate: 50970
+labevents_haadmids %>%
+  filter(itemid %in% 50970) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  # mutate(charttime = charttime + seconds(1)) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_phosphate" = valuenum) %>%
+  rename("flag_phosphate" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#Chloride: 50902 (whole blood), 50806 (blood)
+labevents_haadmids %>%
+  filter(itemid %in% 50902) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_chloride" = valuenum) %>%
+  rename("flag_chloride" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+
+#heart rate: 220045 (d_items)
+chartevents_haadmids %>% 
+  filter(itemid %in% 220045) %>%
+  select(-value, -valueuom,-row_id, -itemid,-storetime, -cgid, -warning, -error, -resultstatus, -stopped, -icustay_id) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect() -> chartevents_df
+
+setDT(chartevents_df) 
+setkey(chartevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,chartevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_Heart_Rate" = valuenum) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#Respiratory Rate: 220210 (d_items)
+chartevents_haadmids %>% 
+  filter(itemid %in% 220210) %>%
+  select(-value, -valueuom,-row_id, -itemid,-storetime, -cgid, -warning, -error, -resultstatus, -stopped, -icustay_id) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect() -> chartevents_df
+
+setDT(chartevents_df) 
+setkey(chartevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,chartevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_RR" = valuenum) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#SpO2: 50817 
+labevents_haadmids %>%
+  filter(itemid %in% 50817) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_SpO2" = valuenum) %>%
+  rename("flag_SpO2" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#systolic bp: 226850 (d_items) or 220180/220179 (noninvasive?)
+chartevents_haadmids %>% 
+  filter(itemid %in% 220179) %>%
+  select(-value, -valueuom,-row_id, -itemid,-storetime, -cgid, -warning, -error, -resultstatus, -stopped, -icustay_id) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect() -> chartevents_df
+
+setDT(chartevents_df) 
+setkey(chartevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,chartevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_systolic" = valuenum) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#diastolic bp: 226851 (d_items) or 220180 (noninvasive?)
+chartevents_haadmids %>% 
+  filter(itemid %in% 220180) %>%
+  select(-value, -valueuom,-row_id, -itemid,-storetime, -cgid, -warning, -error, -resultstatus, -stopped, -icustay_id) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect() -> chartevents_df
+
+setDT(chartevents_df) 
+setkey(chartevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,chartevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_diastolic" = valuenum) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#glucose: 50931 (blood_)
+labevents_haadmids %>%
+  filter(itemid %in% 50931) %>%
+  select(-value, -valueuom,-row_id, -itemid ) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect()-> labevents_df
+
+setDT(labevents_df) 
+setkey(labevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,labevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_glucose" = valuenum) %>%
+  rename("flag_glucose" = flag) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#temperatue (many diff codes): 12757 (d_items)
+chartevents_haadmids %>% 
+  filter(itemid %in% 223762) %>%
+  select(-value, -valueuom,-row_id, -itemid,-storetime, -cgid, -warning, -error, -resultstatus, -stopped, -icustay_id) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect() -> chartevents_df
+
+setDT(chartevents_df) 
+setkey(chartevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,chartevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_temp" = valuenum) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#LDH d_items: 220632
+chartevents_haadmids %>% 
+  filter(itemid %in% 220632) %>%
+  select(-value, -valueuom,-row_id, -itemid,-storetime, -cgid, -warning, -error, -resultstatus, -stopped, -icustay_id) %>%
+  mutate(charttime_2 = charttime) %>%
+  collect() -> chartevents_df
+
+setDT(chartevents_df) 
+setkey(chartevents_df,subject_id,hadm_id, charttime,charttime_2)
+
+foverlaps(mult_reg_df,chartevents_df,by.y = c("subject_id","hadm_id","charttime","charttime_2"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  rename("valuenum_LDH" = valuenum) %>%
+  select(-charttime, -charttime_2) -> mult_reg_df
+
+#age: admissions? pateints?
+mult_reg_df %>% 
+  inner_join(age_df, by = "hadm_id") -> mult_reg_df 
+
+```
+
+### Analysis 
+```{r}
+#How many NAs are there in each column? 
+mult_reg_df %>%
+  select(-t2, -charttime.lab, -repleteVsNon, -row_id, -itemid, -flag_glucose,-flag_SpO2,-flag_chloride,-flag_phosphate,-flag_magnesium,-flag_WBC,-flag_BUN,-flag_hemoglobin,-flag_creatine,-flag_anion_gap,-flag_urine_output) %>%
+  summarise_all(funs(sum(is.na(.))))
+
+mult_reg_df %>%
+  select(-t2, -charttime.lab, -repleteVsNon, -row_id, -itemid) 
+
+#Variables to potentially throw out: 
+#LDH, Temp, BP?, sPO2, Hg, Urine_Output 
+
+#Subset the data by Electrolyte into different dataframes 
+mult_reg.K <- mult_reg_df %>% filter(Electrolyte == "potassium")
+mult_reg.Mg <- mult_reg_df %>% filter(Electrolyte == "magnesium")
+mult_reg.Ph <- mult_reg_df %>% filter(Electrolyte == "phosphate")
+
+#Generate plots for each subset of the data 
+plot(i.valuenum ~ patientweight + age + valuenum_sodium + valuenum_anion_gap + valuenum_creatine + valuenum_BUN + valuenum_WBC + curr_wardid + valuenum_magnesium + valuenum_phosphate + valuenum_chloride + valuenum_Heart_Rate + valuenum_RR + valuenum_glucose + valuenum_diastolic + valuenum_systolic + valuenum_potassium, data = mult_reg.K)
+
+plot(i.valuenum ~ patientweight + age + valuenum_sodium + valuenum_anion_gap + valuenum_creatine + valuenum_BUN + valuenum_WBC + curr_wardid + valuenum_magnesium + valuenum_phosphate + valuenum_chloride + valuenum_Heart_Rate + valuenum_RR + valuenum_glucose + valuenum_diastolic + valuenum_systolic + valuenum_potassium, data = mult_reg.Mg)
+
+plot(i.valuenum ~ patientweight + age + valuenum_sodium + valuenum_anion_gap + valuenum_creatine + valuenum_BUN + valuenum_WBC + curr_wardid + valuenum_magnesium + valuenum_phosphate + valuenum_chloride + valuenum_Heart_Rate + valuenum_RR + valuenum_glucose + valuenum_diastolic + valuenum_systolic + valuenum_potassium, data = mult_reg.Ph)
+
+#Perform linear regression analysis across each electrolyte  
+mult_reg.K.lm <- lm(i.valuenum ~ patientweight + age + valuenum_sodium + valuenum_anion_gap + valuenum_creatine + valuenum_BUN + valuenum_WBC + curr_wardid + valuenum_magnesium + valuenum_phosphate + valuenum_chloride + valuenum_Heart_Rate + valuenum_RR + valuenum_glucose + valuenum_diastolic + valuenum_systolic 
+                    + valuenum_potassium
+                    , data = mult_reg.K)
+summary(mult_reg.K.lm)
+
+mult_reg.Mg.lm <- lm(i.valuenum ~ patientweight + age + valuenum_sodium + valuenum_anion_gap + valuenum_creatine + valuenum_BUN + valuenum_WBC + curr_wardid + valuenum_magnesium 
+                     + valuenum_phosphate
+                     + valuenum_chloride + valuenum_Heart_Rate + valuenum_RR + valuenum_glucose + valuenum_diastolic + valuenum_systolic + valuenum_potassium, data = mult_reg.Mg)
+summary(mult_reg.Mg.lm)
+
+mult_reg.Ph.lm <- lm(i.valuenum ~ patientweight + age + valuenum_sodium + valuenum_anion_gap + valuenum_creatine + valuenum_BUN + valuenum_WBC + curr_wardid + valuenum_magnesium 
+                     + valuenum_phosphate
+                     + valuenum_chloride + valuenum_Heart_Rate + valuenum_RR + valuenum_glucose + valuenum_diastolic + valuenum_systolic + valuenum_potassium, data = mult_reg.Ph)
+summary(mult_reg.Ph.lm)
+
+
+#Checking for homoscedasticity
+par(mfrow=c(2,2))
+plot(mult_reg.K.lm)
+par(mfrow=c(1,1))
+
+par(mfrow=c(2,2))
+plot(mult_reg.Mg.lm)
+par(mfrow=c(1,1))
+
+par(mfrow=c(2,2))
+plot(mult_reg.Ph.lm)
+par(mfrow=c(1,1))
+
+#Create GG Plots
+pairedDataLong.K.graph <- ggplot(pairedDataLong.K, aes(x=pre_repletion, y=delta)) + geom_pointdensity() +
+                     # geom_point(fill = "white", color = "black", shape  = 1) + 
+  # stat_density_2d(aes(fill = ..level..), geom="polygon") +
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 2.5, label.y = 5) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value") + scale_x_continuous(limits = c(2,7))
+
+pairedDataLong.Mg.graph <- ggplot(pairedDataLong.Mg, aes(x=pre_repletion, y=delta))+ geom_pointdensity() +
+                     geom_point(fill = "white", color = "black", shape  = 1) + 
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 1, label.y = 7) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value") 
+
+pairedDataLong.Ph.graph <- ggplot(pairedDataLong.Ph, aes(x=pre_repletion, y=delta))+ geom_pointdensity() +
+                     geom_point(fill = "white", color = "black", shape  = 1) + 
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 1, label.y = 7) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value")
+par(mfrow=c(2,2))
+pairedDataLong.K.graph
+pairedDataLong.Mg.graph
+pairedDataLong.Ph.graph
+par(mfrow=c(2,2))  
+```
+
+##### Outputting pretty tables
+```{r results= "asis"}
+#Outputting pretty tables
+stargazer(mult_reg.K.lm,mult_reg.Mg.lm,mult_reg.Ph.lm, 
+          type = "html", 
+          align = T, 
+          column.labels = c("Potassium", "Magnesium", "Phosphate"), #we use html output to match our planned R Markdown output,
+          no.space = T,
+          dep.var.labels = "Electrolyte Threshold",
+          covariate.labels = c("Patient Weight", "Age", "Sodium", "Anion Gap","Creatine", "BUN", "WBC", "Unit", "Magnesium", "Phosphate", "Chloride", "Heart Rate", "Respiratory Rate", "Glucose", "Diastolic BP", "Systolic BP", "Potassium"), out = "mult-regression.html")
+```
+
+
+
+###Unit Analysis 
+```{r}
+ repletedVsNonRepleted %>%
+  ungroup() %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(preVsPost == "pre_repletion") %>%
+  inner_join(transfers_df, by = "hadm_id")
+
+mult_reg_df %>%
+  filter(Electrolyte == "potassium") %>%
+  filter(!is.na(curr_wardid)) 
+
+
+transfers <- tbl_mimic("transfers")
+
+transfers %>%
+  filter(dbsource == "metavision") %>%
+  filter(hadm_id %in% repletedVsNonRepleted_hadm_ids)  -> transfers_hadmids
+
+  select(subject_id, hadm_id, curr_wardid,intime, outtime)
+
+transfers_hadmids %>%
+  filter(!is.na(curr_wardid)) %>%
+  collect() -> transfers_df
+
+setDT(transfers_df)
+setkey(transfers_df,subject_id, hadm_id, intime, outtime)
+
+foverlaps(repletedVsNonRepleted.dt,transfers_df,by.y = c("subject_id","hadm_id","intime","outtime"),by.x = c("subject_id","hadm_id", "t2","charttime.lab"),type = "any", mult = "last" ,nomatch = NA) -> mult_reg_df
+
+mult_reg_df %>%
+  select(-intime, -outtime) -> mult_reg_df
+
+```
+

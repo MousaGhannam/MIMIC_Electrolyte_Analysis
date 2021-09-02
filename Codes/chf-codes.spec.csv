@@ -1,0 +1,27 @@
+code_standard_name,code,description
+ICD-10,I09.81,Rheumatic heart failure
+ICD-10,I11.0,Hypertensive heart disease with heart failure
+ICD-10,I13.0,Hypertensive heart and chronic kidney disease with heart failure and stage 1 through stage 4 ch
+ICD-10,I13.0,"Hypertensive heart and chronic kidney disease with heart failure and stage 1 through stage 4 chronic kidney disease, or unspecified chronic kidney disease"
+ICD-10,I13.2,Hypertensive heart and chronic kidney disease with heart failure and with stage 5 chronic kidne
+ICD-10,I13.2,"Hypertensive heart and chronic kidney disease with heart failure and with stage 5 chronic kidney disease, or end stage renal disease"
+ICD-10,I50.20,Unspecified systolic (congestive) heart failure
+ICD-10,I50.21,Acute systolic (congestive) heart failure
+ICD-10,I50.22,Chronic systolic (congestive) heart failure
+ICD-10,I50.23,Acute on chronic systolic (congestive) heart failure
+ICD-10,I50.30,Unspecified diastolic (congestive) heart failure
+ICD-10,I50.31,Acute diastolic (congestive) heart failure
+ICD-10,I50.32,Chronic diastolic (congestive) heart failure
+ICD-10,I50.33,Acute on chronic diastolic (congestive) heart failure
+ICD-10,I50.40,Unspecified combined systolic (congestive) and diastolic (congestive) heart failure
+ICD-10,I50.41,Acute combined systolic (congestive) and diastolic (congestive) heart failure
+ICD-10,I50.42,Chronic combined systolic (congestive) and diastolic (congestive) heart failure
+ICD-10,I50.43,Acute on chronic combined systolic (congestive) and diastolic (congestive) heart failure
+ICD-10,I50.9,"Heart failure, unspecified"
+ICD-10,I97.130,Postprocedural heart failure following cardiac surgery
+ICD-10,I97.131,Postprocedural heart failure following other surgery
+ICD-10,P29.0,Neonatal cardiac failure
+ICD9,398.91,Rheumatic heart failure
+ICD9,428.0,CHF NOS
+ICD9,428.1,Left heart failure
+ICD9,428.9,Heart failure NOS

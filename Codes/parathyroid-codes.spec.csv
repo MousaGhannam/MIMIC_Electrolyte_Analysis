@@ -1,0 +1,20 @@
+code,code_standard_name,description
+194.1,ICD9,Malig neo parathyroid
+227.1,ICD9,Benign neo parathyroid
+252.00,ICD9,Hyperparathyroidism NOS
+252.01,ICD9,Primary hyperparathyroid
+252.08,ICD9,Hyperparathyroidism NEC
+252.1,ICD9,Hypoparathyroidism
+252.8,ICD9,Parathyroid disorder NEC
+252.9,ICD9,Parathyroid disorder NOS
+C75.0,ICD-10,Malignant neoplasm of parathyroid gland
+D35.1,ICD-10,Benign neoplasm of parathyroid gland
+E20.0,ICD-10,Idiopathic hypoparathyroidism
+E20.8,ICD-10,Other hypoparathyroidism
+E20.9,ICD-10,"Hypoparathyroidism, unspecified"
+E21.0,ICD-10,Primary hyperparathyroidism
+E21.1,ICD-10,"Secondary hyperparathyroidism, not elsewhere classified"
+E21.2,ICD-10,Other hyperparathyroidism
+E21.3,ICD-10,"Hyperparathyroidism, unspecified"
+E89.2,ICD-10,Postprocedural hypoparathyroidism
+N25.81,ICD-10,Secondary hyperparathyroidism of renal origin

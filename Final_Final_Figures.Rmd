@@ -1,0 +1,744 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+#Figure 2 
+
+## A
+```{r}
+#Labhour (Repleted vs Non-repleted)
+repletedVsNonRepleted %>% replace_na(list(preVsPost = "pre_repletion"))
+
+
+  ##NON PROPORTIONAL
+repletedVsNonRepleted %>%
+  filter(Electrolyte == "potassium") %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  # filter(isNonRepleted == "repleted") %>%
+  ggplot(aes(x = LabHour,fill=isNonRepleted)) + geom_histogram(position="identity",bins = 24,alpha=0.6, color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr() + xlab("Hour of Day") + ylab("Number of Lab Values")
+
+ggsave("Figure 2A.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+repletedVsNonRepleted %>%
+  filter(Electrolyte == "magnesium") %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  # filter(isNonRepleted == "repleted") %>%
+  ggplot(aes(x = LabHour,fill=isNonRepleted)) + geom_histogram(position="identity",bins = 24,alpha=0.6, color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr() + xlab("Hour of Day") + ylab("Number of Lab Values")
+
+ggsave("Figure 2A.Mg.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+dev.off()
+repletedVsNonRepleted %>%
+  filter(Electrolyte == "phosphate") %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab)) %>%
+  replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  # filter(isNonRepleted == "repleted") %>%
+  ggplot(aes(x = LabHour,fill=isNonRepleted)) + geom_histogram(position="identity",bins = 24,alpha=0.6, color = "black") + scale_x_continuous(breaks=seq(0,24,2))  + theme_pubr() + xlab("Hour of Day") + ylab("Number of Lab Values")
+
+ggsave("Figure 2A.Ph.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+```
+
+## B
+```{r}
+repletedVsNonRepleted$repleteVsNon <- factor(repletedVsNonRepleted$repleteVsNon, levels = c("1L_NR", "1L_1R", "ML_1R"))
+
+repletedVsNonRepleted$Electrolyte <- factor(repletedVsNonRepleted$Electrolyte, levels = c("potassium", "magnesium", "phosphate"))
+
+repletedVsNonRepleted$abnormal_status <- factor(repletedVsNonRepleted$abnormal_status, levels = c("aboveLimit", "normalLimits", "belowLimit"))
+
+repletedVsNonRepleted %>% 
+  filter(preVsPost == "pre_repletion" | repleteVsNon == "1L_NR") %>%
+  filter(Electrolyte != "calcium") %>%
+   group_by(Electrolyte, repleteVsNon,abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+  arrange(Electrolyte, repleteVsNon) %>%
+  mutate(percentage = observations / sum(observations) * 100) %>%
+  ggbarplot(x = "repleteVsNon", y="percentage",color = "black", fill = "abnormal_status",facet.by = "Electrolyte", nrow= 1, ncol=3,panel.labs = list(Electrolyte = c("Potassium", "Magnesium", "Phosphate"))) + scale_fill_manual(values =c( "red","green","blue"), labels = c("Preceding Lab Value Over Reference","Preceding Lab Value Over Within Reference ","Preceding Lab Value Below Reference"), name = "Lab Value Status") + 
+    theme_classic() + 
+    theme(
+      # axis.text.x=element_text(angle = 90, hjust = 0),
+      #     legend.position = "left", 
+      #     legend.text = element_text(angle = 90)
+          ) +
+    labs(y= "Percentage", x = "Scenario")
+
+ggsave("Figure 2B.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+```
+
+## C
+```{r}
+#Potassium #3.3 - 5.2
+##Magnesium: 1.8 - 2.6
+## Phosphate: 2.7 - 4.6
+
+repletedVsNonRepleted$abnormal_status <- factor(repletedVsNonRepleted$abnormal_status, levels = c("aboveLimit", "normalLimits", "belowLimit"))
+
+#Potassium
+repletedVsNonRepleted %>% 
+  filter(preVsPost == "pre_repletion" & repleteVsNon != "1L_NR") %>%
+  filter(Electrolyte == "potassium") %>%
+   group_by(Electrolyte,abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+  arrange(Electrolyte) %>%
+  mutate(percentage = observations / sum(observations) * 100) %>%
+  ggplot( aes("", percentage, fill = abnormal_status)) + 
+  geom_bar(stat = "identity", color = "black", size = 0.5) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values =c( "red","green","blue"),name = " ",
+                    labels = c( "Above 5.2", "3.3-5.2","Below 3.3")
+                    ) +
+  theme_void() + theme(legend.position="top")
+
+ggsave("Figure 2C.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+#Magnesium
+repletedVsNonRepleted %>% 
+  filter(preVsPost == "pre_repletion" & repleteVsNon != "1L_NR") %>%
+  filter(Electrolyte == "magnesium") %>%
+   group_by(Electrolyte,abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+  mutate(percentage = observations / sum(observations) * 100) %>%
+  arrange(Electrolyte) %>%
+  ggplot( aes("", percentage, fill = abnormal_status)) + 
+  geom_bar(stat = "identity", color = "black", size = 0.5) +
+  coord_polar(theta = "y") +
+ scale_fill_manual(values =c( "red","green","blue"),name = " ",
+                    labels = c( "Above 2.6", "1.8-2.6","Below 1.8")
+                    ) +
+  theme_void() + theme(legend.position="top")
+
+ggsave("Figure 2C.Mg.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+#Phosphate
+repletedVsNonRepleted %>% 
+  filter(preVsPost == "pre_repletion" & repleteVsNon != "1L_NR") %>%
+  filter(Electrolyte == "phosphate") %>%
+   group_by(Electrolyte,abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+  arrange(Electrolyte) %>%
+  mutate(percentage = observations / sum(observations) * 100) %>%
+  ggplot( aes("", percentage, fill = abnormal_status)) + 
+  geom_bar(stat = "identity", color = "black", size = 0.5) +
+  coord_polar(theta = "y") +
+  scale_fill_manual(values =c("green","blue"),name = " ",
+                    labels = c("2.7-4.6","Below 2.7")
+                    ) +
+  theme_void() + theme(legend.position="top")
+
+ggsave("Figure 2C.Ph.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+```
+
+## D
+```{r}
+repletedVsNonRepleted$preVsPost <- factor(repletedVsNonRepleted$preVsPost, levels = c("pre_repletion", "post_repletion"))
+
+#Results as a proportion of total value
+
+#Potassium
+repletedVsNonRepleted %>% 
+  filter( repleteVsNon != "1L_NR") %>%
+  filter(Electrolyte == "potassium") %>%
+ggplot(., aes(x = valuenum,fill=preVsPost)) +
+  geom_histogram(aes(y=stat(density*width)),alpha=0.6, position="identity",bins=25, color="black",binwidth = 0.11) + scale_x_continuous(limits = c(0,6) ) + scale_y_continuous(limits = c(0,0.25) ) + theme_pubr() + xlab("Potassium Value") + ylab("Proportion of Occurances") + scale_fill_discrete(name = "", labels = c(" Pre-repletion K","Post-repletion K"))
+
+ggsave("Figure 2D.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+  #Magnesium
+repletedVsNonRepleted %>% 
+  filter( repleteVsNon != "1L_NR") %>%
+  filter(Electrolyte == "magnesium") %>%
+ggplot(., aes(x = valuenum,fill=preVsPost)) +
+  geom_histogram(aes(y=stat(density*width)),alpha=0.6, position="identity",bins=30, color="black",binwidth = 0.11) + scale_x_continuous(limits = c(0,6) ) + scale_y_continuous(limits = c(0,0.25) ) + theme_pubr() + xlab("Magnesium Value") + ylab("Proportion of Occurrences") + scale_fill_discrete(name = "", labels = c("Pre-repletion Mg","Post-repletion Mg")) 
+
+ggsave("Figure 2D.Mg.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+  #Phosphate
+repletedVsNonRepleted %>% 
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(Electrolyte == "phosphate") %>%
+ggplot(., aes(x = valuenum,fill=preVsPost)) +
+  geom_histogram(aes(y=stat(density*width)),alpha=0.6, position="identity",bins=40, color="black",binwidth = 0.11) + scale_x_continuous(limits = c(0,6) ) + scale_y_continuous(limits = c(0,0.25) ) + theme_pubr() + xlab("Phosphate Value") + ylab("Proportion of Occurrences") + scale_fill_discrete(name = "", labels = c("Pre-repletion Ph","Post-repletion Ph")) 
+
+ggsave("Figure 2D.Ph.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+```
+
+
+##D2
+
+```{r}
+repletedVsNonRepleted$preVsPost <- factor(repletedVsNonRepleted$preVsPost, levels = c("pre_repletion", "post_repletion"))
+
+#Results as a proportion of total value
+
+repletedVsNonRepleted %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  filter(Electrolyte == "potassium") %>%
+ggplot(., aes(x = valuenum,fill=preVsPost)) +
+  geom_histogram(aes(y=stat(density*width)),alpha=0.6, position="identity",bins=25, color="black",binwidth = 0.11) + scale_x_continuous(limits = c(0,6) ) + scale_y_continuous(limits = c(0,0.25) ) + theme_pubr() + xlab("Potassium Value") + ylab("Proportion of Occurances") + scale_fill_discrete(name = "", labels = c(" Pre-repletion K","Post-repletion K"))
+
+
+```
+
+#Figure 3
+## A
+```{r}
+#Repletion hour vs Lab Hour 
+repletedVsNonRepleted %>%
+  filter(Electrolyte != "calcium") %>%
+  ungroup() %>%
+  mutate(LabHour = hour(charttime.lab) , RepletionHour = hour(starttime)) %>%
+  pivot_longer(cols = c(LabHour,RepletionHour), values_to="Hour", names_to="WhichHour") -> yy
+
+ordered(yy$WhichHour)
+yy$WhichHour <- factor(yy$WhichHour, ordered = FALSE)
+yy$WhichHour <- relevel(yy$WhichHour,"RepletionHour")
+
+yy %>%
+filter(Electrolyte == "potassium") %>%
+ggplot( aes(x = Hour,fill=WhichHour)) +
+  geom_histogram(alpha=0.6, position="identity",bins=24, color="black") + scale_x_continuous(breaks=seq(0,24,2))  +  theme_pubr() +
+  xlab("Hour of Day") + 
+  ylab("Number of Occurances") + 
+  scale_fill_brewer(palette="Pastel1",name = "", labels = c("Repletion Hour","Lab Hour"))
+
+ggsave("Figure 3A.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+yy %>%
+filter(Electrolyte == "magnesium") %>%
+ggplot( aes(x = Hour,fill=WhichHour)) +
+  geom_histogram(alpha=0.6, position="identity",bins=24, color="black") + scale_x_continuous(breaks=seq(0,24,2))  +  theme_pubr() +
+  xlab("Hour of Day") + 
+  ylab("Number of Occurances") + 
+  scale_fill_brewer(palette="Pastel1",name = "", labels = c("Repletion Hour","Lab Hour"))
+
+ggsave("Figure 3A.Mg.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+yy %>%
+filter(Electrolyte == "phosphate") %>%
+ggplot( aes(x = Hour,fill=WhichHour)) +
+  geom_histogram(alpha=0.6, position="identity",bins=24, color="black") + scale_x_continuous(breaks=seq(0,24,2))  +  theme_pubr() +
+  xlab("Hour of Day") + 
+  ylab("Number of Occurances") + 
+  scale_fill_brewer(palette="Pastel1",name = "", labels = c("Repletion Hour","Lab Hour"))
+
+ggsave("Figure 3A.Ph.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+```
+
+## B
+```{r}
+
+```
+
+## C
+```{r}
+repletedVsNonRepleted %>% 
+  filter(repleteVsNon != "1L_NR") %>%
+  select(Electrolyte, preVsPost, charttime.lab, valuenum, linkorderid,starttime) %>%
+  group_by(Electrolyte,linkorderid, preVsPost) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(id_cols = c(linkorderid,row,Electrolyte), names_from = "preVsPost", values_from = c(valuenum, charttime.lab,starttime)) %>%
+  select(-row) %>%
+  filter(!is.na(valuenum_post_repletion) | !is.na(valuenum_pre_repletion) | !is.na(charttime.lab_pre_repletion) | !is.na(charttime.lab_pre_repletion)) %>%
+  mutate(delta_valuenum = valuenum_post_repletion - valuenum_pre_repletion, delta_intervalToNextLab = difftime(charttime.lab_post_repletion,  charttime.lab_pre_repletion, units = "mins"), delta_intervalToNextOrder = difftime(starttime_pre_repletion,  charttime.lab_pre_repletion, units = "mins")) %>% 
+  select(Electrolyte,delta_intervalToNextLab,delta_intervalToNextOrder) %>%
+  ungroup() %>%
+  pivot_longer(cols = starts_with("delta_"), names_to = "delta", values_to = "minutes") %>%
+  filter(Electrolyte == "potassium" ) %>%
+  ggplot(data=., aes(x=minutes, group=delta, fill=delta)) +
+    geom_density(adjust=1.5, alpha=.4) + 
+    scale_x_continuous(limits = c(0, 3000)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+    theme_pubclean()
+
+ggsave("Figure 3C.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+repletedVsNonRepleted %>% 
+  filter(repleteVsNon != "1L_NR") %>%
+  select(Electrolyte, preVsPost, charttime.lab, valuenum, linkorderid,starttime) %>%
+  group_by(Electrolyte,linkorderid, preVsPost) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(id_cols = c(linkorderid,row,Electrolyte), names_from = "preVsPost", values_from = c(valuenum, charttime.lab,starttime)) %>%
+  select(-row) %>%
+  filter(!is.na(valuenum_post_repletion) | !is.na(valuenum_pre_repletion) | !is.na(charttime.lab_pre_repletion) | !is.na(charttime.lab_pre_repletion)) %>%
+  mutate(delta_valuenum = valuenum_post_repletion - valuenum_pre_repletion, delta_intervalToNextLab = difftime(charttime.lab_post_repletion,  charttime.lab_pre_repletion, units = "mins"), delta_intervalToNextOrder = difftime(starttime_pre_repletion,  charttime.lab_pre_repletion, units = "mins")) %>% 
+  select(Electrolyte,delta_intervalToNextLab,delta_intervalToNextOrder) %>%
+  ungroup() %>%
+  pivot_longer(cols = starts_with("delta_"), names_to = "delta", values_to = "minutes") %>%
+  filter(Electrolyte == "magnesium" ) %>%
+  ggplot(data=., aes(x=minutes, group=delta, fill=delta)) +
+    geom_density(adjust=1.5, alpha=.4) + 
+    scale_x_continuous(limits = c(0, 3000)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+    theme_pubclean()
+
+ggsave("Figure 3C.Mg.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+repletedVsNonRepleted %>% 
+  filter(repleteVsNon != "1L_NR") %>%
+  select(Electrolyte, preVsPost, charttime.lab, valuenum, linkorderid,starttime) %>%
+  group_by(Electrolyte,linkorderid, preVsPost) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(id_cols = c(linkorderid,row,Electrolyte), names_from = "preVsPost", values_from = c(valuenum, charttime.lab,starttime)) %>%
+  select(-row) %>%
+  filter(!is.na(valuenum_post_repletion) | !is.na(valuenum_pre_repletion) | !is.na(charttime.lab_pre_repletion) | !is.na(charttime.lab_pre_repletion)) %>%
+  mutate(delta_valuenum = valuenum_post_repletion - valuenum_pre_repletion, delta_intervalToNextLab = difftime(charttime.lab_post_repletion,  charttime.lab_pre_repletion, units = "mins"), delta_intervalToNextOrder = difftime(starttime_pre_repletion,  charttime.lab_pre_repletion, units = "mins")) %>% 
+  select(Electrolyte,delta_intervalToNextLab,delta_intervalToNextOrder) %>%
+  ungroup() %>%
+  pivot_longer(cols = starts_with("delta_"), names_to = "delta", values_to = "minutes") %>%
+  filter(Electrolyte == "phosphate" ) %>%
+  ggplot(data=., aes(x=minutes, group=delta, fill=delta)) +
+    geom_density(adjust=1.5, alpha=.4) + 
+    coord_cartesian(xlim = c(0, 3000)) + 
+    # scale_x_continuous(limits = c(-500, 3000)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+    theme_pubclean()
+
+ggsave("Figure 3C.Ph.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+```
+
+#Figure 4
+## A (Table for Prism)
+```{r}
+repletedVsNonRepleted %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  group_by(Electrolyte, preVsPost) %>%
+  summarize(mean = mean(valuenum, na.rm=TRUE), sd = sd(valuenum,na.rm = TRUE), n =n()) %>%
+  pivot_wider(names_from = "preVsPost", values_from = c(mean, sd, n))
+```
+
+## B,C,D
+```{r}
+repletedVsNonRepleted %>% 
+  filter(repleteVsNon != "1L_NR") %>%
+  select(Electrolyte, preVsPost, valuenum, linkorderid) %>%
+  group_by(Electrolyte,linkorderid, preVsPost) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(id_cols = c(linkorderid,row,Electrolyte), names_from = "preVsPost", values_from = valuenum) %>%
+  select(-row) %>%
+  filter(!is.na(pre_repletion) | !is.na(post_repletion)) %>%
+  mutate(delta = post_repletion - pre_repletion) -> pairedDataLong
+
+#Subset the data by Electrolyte into different dataframes 
+pairedDataLong.K <- pairedDataLong %>% filter(Electrolyte == "potassium")
+pairedDataLong.Mg <- pairedDataLong %>% filter(Electrolyte == "magnesium")
+pairedDataLong.Ph <- pairedDataLong %>% filter(Electrolyte == "phosphate")
+
+#Generate plots for each subset of the data 
+plot(delta ~ pre_repletion, data = pairedDataLong.K)
+plot(delta ~ pre_repletion, data = pairedDataLong.Mg)
+plot(delta ~ pre_repletion, data = pairedDataLong.Ph)
+
+#Perform linear regression analysis across each electrolyte  
+pairedDataLong.K.lm <- lm(delta ~ pre_repletion, data = pairedDataLong.K)
+summary(pairedDataLong.K.lm)
+
+pairedDataLong.Mg.lm <- lm(delta ~ pre_repletion, data = pairedDataLong.Mg)
+summary(pairedDataLong.Mg.lm)
+
+pairedDataLong.Ph.lm <- lm(delta ~ pre_repletion, data = pairedDataLong.Ph)
+summary(pairedDataLong.Ph.lm)
+
+#Checking for homoscedasticity
+par(mfrow=c(2,2))
+plot(pairedDataLong.K.lm)
+par(mfrow=c(1,1))
+
+par(mfrow=c(2,2))
+plot(pairedDataLong.Mg.lm)
+par(mfrow=c(1,1))
+
+par(mfrow=c(2,2))
+plot(pairedDataLong.Ph.lm)
+par(mfrow=c(1,1))
+
+#Create GG Plots
+pairedDataLong.K.graph <- ggplot(pairedDataLong.K, aes(x=pre_repletion, y=delta)) + geom_pointdensity() +
+                     # geom_point(fill = "white", color = "black", shape  = 1) + 
+  # stat_density_2d(aes(fill = ..level..), geom="polygon") +
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 2.5, label.y = 5) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value") + scale_x_continuous(limits = c(2,7) )
+
+ggsave("FigureB4.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+
+pairedDataLong.Mg.graph <- ggplot(pairedDataLong.Mg, aes(x=pre_repletion, y=delta))+ geom_pointdensity() +
+                     geom_point(fill = "white", color = "black", shape  = 1) + 
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 1, label.y = 7) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value") 
+
+pairedDataLong.Ph.graph <- ggplot(pairedDataLong.Ph, aes(x=pre_repletion, y=delta))+ geom_pointdensity() +
+                     geom_point(fill = "white", color = "black", shape  = 1) + 
+                     geom_smooth(method="lm", col="blue") + 
+                     stat_regline_equation(label.x = 1, label.y = 7) + 
+                     theme_classic() + labs(x = "Pre-repletion lab value", y = "Change in lab value")
+par(mfrow=c(2,2))
+pairedDataLong.K.graph
+ggsave("Figure4B.K.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+pairedDataLong.Mg.graph
+ggsave("Figure4B.Mg.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+pairedDataLong.Ph.graph
+ggsave("Figure4B.Ph.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+par(mfrow=c(2,2))
+# 
+# ggarrange(pairedDataLong.K.graph, pairedDataLong.Mg.graph, pairedDataLong.Ca.graph, pairedDataLong.Ph.graph + rremove("x.text"), 
+#           labels = c("A", "B", "C", "D"),
+#           ncol = 2, nrow = 2)
+
+ggscatter(pairedDataLong,x = "pre_repletion", y="delta",facet.by = "Electrolyte" ) + xlim(0,5)
+gghistogram(pairedDataLong,x = "delta",facet.by = "Electrolyte") 
+```
+
+### Outputting pretty tables
+```{r results= "asis"}
+#Outputting pretty tables
+stargazer(pairedDataLong.K.lm,pairedDataLong.Mg.lm,pairedDataLong.Ph.lm, 
+          type = "html", 
+          align = T, 
+          column.labels = c("Potassium", "Magnesium", "Phosphate"), #we use html output to match our planned R Markdown output,
+          no.space = T, out = "regression_pre_vs_post.html")
+
+# 
+#           dep.var.labels = "Electrolyte Threshold",
+#           # covariate.labels = c("Patient Weight", "Age", "Sodium", "Anion Gap","Creatine", "BUN", "WBC", "Unit", "Magnesium", "Phosphate", "Chloride", "Heart Rate", "Respiratory Rate", "Glucose", "Diastolic BP", "Systolic BP", "Potassium"),
+# )
+```
+
+#Table 
+## 1
+```{r}
+repletedVsNonRepleted %>% 
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  filter(Electrolyte != "calcium") %>%
+   group_by(Electrolyte, isNonRepleted,abnormal_status) %>%
+  summarize(observations = n(),mean = round(mean(valuenum, na.rm = T),2), std_dev = round(sd(valuenum, na.rm=T),2)) %>%
+  arrange(Electrolyte) %>%
+  mutate(percentage = round(observations / sum(observations) * 100,2))
+  
+```
+
+## 2
+```{r}
+repletedVsNonRepleted %>% 
+  filter(preVsPost == "pre_repletion" | repleteVsNon != "1L_NR") %>%
+  filter(Electrolyte != "calcium") %>%
+   group_by(Electrolyte,abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+  arrange(Electrolyte) %>%
+  mutate(percentage = observations / sum(observations) * 100)
+```
+
+## 3
+```{r}
+repletedVsNonRepleted %>% 
+  filter(preVsPost == "pre_repletion" | repleteVsNon == "1L_NR") %>%
+  filter(Electrolyte != "calcium") %>%
+   group_by(Electrolyte, repleteVsNon,abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+  arrange(Electrolyte, repleteVsNon) %>%
+  mutate(percentage = observations / sum(observations) * 100)
+```
+
+## 4
+```{r}
+repletedVsNonRepleted %>% 
+  filter(repleteVsNon != "1L_NR") %>%
+  select(Electrolyte, preVsPost, charttime.lab, valuenum, linkorderid,starttime,endtime) %>%
+  group_by(Electrolyte,linkorderid, preVsPost) %>%
+  mutate(row = row_number()) %>%
+  pivot_wider(id_cols = c(linkorderid,row,Electrolyte), names_from = "preVsPost", values_from = c(valuenum, charttime.lab,starttime,endtime)) %>%
+  select(-row) %>%
+  filter(!is.na(valuenum_post_repletion) | !is.na(valuenum_pre_repletion) | !is.na(charttime.lab_pre_repletion) | !is.na(charttime.lab_pre_repletion)) %>%
+  mutate(
+         delta_valuenum = valuenum_post_repletion - valuenum_pre_repletion, 
+         t_total = difftime(charttime.lab_post_repletion,charttime.lab_pre_repletion, units = "mins"), 
+         t_repletion = difftime(starttime_pre_repletion, charttime.lab_pre_repletion, units = "mins"),
+         t_lab = difftime(charttime.lab_post_repletion,endtime_post_repletion, units = "mins")) %>%
+  ungroup() %>%
+group_by(Electrolyte) %>%
+  summarize(mean_t_total = mean(t_total,na.rm=T),
+            sd_t_total = sd(t_total, na.rm=T),
+            n_lab = n(),
+            mean_t_repletion = mean(t_repletion, na.rm=T), 
+            sd_t_repletion = sd(t_repletion, na.rm=T), 
+            mean_t_lab = mean(t_lab, na.rm=T),
+            sd_t_lab = sd(t_lab, na.rm=T))
+```
+##5
+```{r}
+repletedVsNonRepleted %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  filter(isNonRepleted == "repleted") %>%
+  group_by(Electrolyte, preVsPost) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) 
+```
+
+
+#Supplement
+## 1
+```{r}
+icd9_dict %>% collect() -> icd9_dict
+
+##Visualization
+repletedVsNonRepleted %>%
+  filter(preVsPost == "pre_repletion") %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  filter(abnormal_status == "aboveLimit") %>%
+  select(Electrolyte,subject_id, hadm_id, valuenum, abnormal_status) %>%
+  inner_join(icd9_dict, by ="hadm_id") %>% 
+  filter(seq_num == 1) %>%
+  group_by(Electrolyte,abnormal_status,short_title) %>%
+  summarize(obs = n()) %>%
+  arrange(Electrolyte, abnormal_status,desc(obs)) %>%
+  slice(1:10) %>%
+    ggplot(.,aes(x = reorder_within( x = short_title,by = obs, within = Electrolyte, fun = function(x) mean(x)), y =obs, fill = Electrolyte)) +
+geom_bar(stat="identity", color="black", position=position_dodge()) +
+  scale_x_reordered() +
+  theme_bw()  + 
+  # facet_wrap(~Electrolyte,scales = "free", drop = TRUE) +
+  scale_x_reordered() +
+  facet_grid(.~Electrolyte, scales = "free", space = "free", drop = TRUE) +
+  theme(axis.text.x=element_text(angle = 90, hjust = 0), legend.position = "right") + 
+  labs(y= "Observations", x = "Top Over-repleted Diagnoses")
+
+ggsave("Supplement1.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+```
+### Table
+```{r}
+repletedVsNonRepleted %>%
+  filter(preVsPost == "pre_repletion") %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  inner_join(icd9_dict, by ="hadm_id") %>% 
+  filter(seq_num == 1) %>%
+  group_by(Electrolyte, abnormal_status, short_title) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100) %>%
+  arrange(Electrolyte, abnormal_status,desc(observations)) %>%
+  filter(abnormal_status == "aboveLimit") %>%
+  slice(1:10) -> condensedExtremeValTable
+
+condensedExtremeValTable
+```
+
+## 2
+```{r}
+
+repletedVsNonRepleted %>%
+  # filter(preVsPost == "pre_repletion") %>%
+  filter(repleteVsNon == "1L_NR") %>%
+  filter(abnormal_status == "belowLimit") %>%
+  select(Electrolyte,subject_id, hadm_id, valuenum, abnormal_status) %>%
+  inner_join(icd9_dict, by ="hadm_id") %>% 
+  filter(seq_num == 1) %>%
+  group_by(Electrolyte,abnormal_status,short_title) %>%
+  summarize(obs = n()) %>%
+  # ungroup() %>%
+  arrange(Electrolyte, abnormal_status,desc(obs)) %>%
+  slice(1:10) %>%
+   ggplot(.,aes(x = reorder_within( x = short_title,by = obs, within = Electrolyte, fun = function(x) mean(x)), y =obs, fill = Electrolyte)) +
+geom_bar(stat="identity", color="black", position=position_dodge()) +
+  scale_x_reordered() +
+  theme_bw()  + 
+  # facet_wrap(~Electrolyte,scales = "free", drop = TRUE) +
+  scale_x_reordered() +
+  facet_grid(.~Electrolyte, scales = "free", space = "free", drop = TRUE) +
+  theme(axis.text.x=element_text(angle = 90, hjust = 0), legend.position = "right") + 
+  labs(y= "Observations", x = "Top Under-repleted Diagnoses")
+
+ggsave("Supplement1.b.pdf",path = "~/Documents/Data Science/R Projects/MIMIC_Electrolyte_Analysis/Output/Final Figures",units = "in", height = 3.91, width = 6.81 , device='pdf', dpi=700)
+```   
+
+### Table
+```{r}
+repletedVsNonRepleted %>%
+  # filter(preVsPost == "pre_repletion") %>%
+  filter(repleteVsNon == "1L_NR") %>%
+  inner_join(icd9_dict, by ="hadm_id") %>% 
+  filter(seq_num == 1) %>%
+  group_by(Electrolyte, abnormal_status, short_title) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100) %>%
+  arrange(Electrolyte, abnormal_status,desc(observations)) %>%
+  filter(abnormal_status == "belowLimit") %>%
+  slice(1:10) -> condensedExtremeValTable_underReplete
+
+condensedExtremeValTable_underReplete
+```
+
+Other Data in Paper
+
+#Studies Workflow
+##1
+```{r}
+repletedVsNonRepleted %>%
+  filter(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R") %>% 
+  group_by(repleteVsNon) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100)
+```
+
+#Electrolyte are replaced in most of the cases at nominal level. 
+##1 
+```{r}
+## Percentage of labs resulting in a repletion
+
+repletedVsNonRepleted %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  group_by(Electrolyte,isNonRepleted) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100)
+```
+##2 
+```{r}
+  repletedVsNonRepleted %>%
+    mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                     repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+    group_by(Electrolyte,isNonRepleted, abnormal_status) %>%
+    summarize(observations = n()) %>%
+    mutate(percentage = observations / sum(observations) * 100)
+```
+
+##3
+```{r}
+
+
+
+## PROPORTIONAL
+repletedVsNonRepleted %>%
+   replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  filter(Electrolyte == "potassium") %>%
+  ungroup()%>%
+  cohens_d(formula = valuenum ~ isNonRepleted)
+
+repletedVsNonRepleted %>%
+   replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  filter(Electrolyte == "magnesium") %>%
+  ungroup()%>%
+  cohens_d(formula = valuenum ~ isNonRepleted)
+
+repletedVsNonRepleted %>%
+   replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  filter(Electrolyte == "phosphate") %>%
+  ungroup()%>%
+  cohens_d(formula = valuenum ~ isNonRepleted)
+ 
+```
+
+
+# Newer figure numbers 
+## Figure 4 
+### B
+```{r}
+#Below Threshold
+repletedVsNonRepleted %>% 
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  filter(abnormal_status == "belowLimit") %>% 
+  group_by(Electrolyte,repleteVsNon, abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+    ggbarplot(x = "repleteVsNon", y="mean",color = "black", fill = "repleteVsNon",facet.by = "Electrolyte", nrow= 1, ncol=3,panel.labs = list(Electrolyte = c("Potassium", "Magnesium", "Phosphate"))) + scale_fill_manual(values =c( "red","green","blue"), name = "Lab Value Status") + 
+    theme_classic() + 
+    theme(
+      axis.text.x=element_text(angle = 90, hjust = 0),
+          legend.position = "none",
+          # legend.text = element_text(angle = 90)
+          ) +
+    labs(y= "Mean Lab Value", x = "Electrolyte") +
+  geom_errorbar(aes(ymin=mean, ymax=mean+std_dev), width=.2,
+                 position=position_dodge(.9))
+
+#At threshold 
+repletedVsNonRepleted %>% 
+  mutate(isNonRepleted = case_when(repleteVsNon == "1L_1R" | repleteVsNon == "ML_1R" ~ "repleted",
+                                   repleteVsNon == "1L_NR" ~ "nonRepleted")) %>%
+  replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  filter(abnormal_status == "normalLimits") %>% 
+  group_by(Electrolyte,repleteVsNon, abnormal_status) %>%
+  summarize(observations = n(),mean = mean(valuenum, na.rm = T), std_dev = sd(valuenum, na.rm=T)) %>%
+    ggbarplot(x = "repleteVsNon", y="mean",color = "black", fill = "repleteVsNon",facet.by = "Electrolyte", nrow= 1, ncol=3,panel.labs = list(Electrolyte = c("Potassium", "Magnesium", "Phosphate"))) + scale_fill_manual(values =c( "red","green","blue"), name = "Lab Value Status") + 
+    theme_classic() + 
+    theme(
+      axis.text.x=element_text(angle = 90, hjust = 0),
+          legend.position = "none",
+          # legend.text = element_text(angle = 90)
+          ) +
+    labs(y= "Mean Lab Value", x = "Electrolyte") +
+  geom_errorbar(aes(ymin=mean, ymax=mean+std_dev), width=.2,
+                 position=position_dodge(.9))
+
+```
+###C
+```{r}
+repletedVsNonRepleted %>% 
+  filter(Electrolyte == "potassium") %>%
+   replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  ggplot(data=., aes(x=valuenum, group=repleteVsNon, fill=repleteVsNon)) +
+    geom_density(adjust=1.5, alpha=.4) + 
+    scale_x_continuous(limits = c(0, 7)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+    theme_pubclean() + labs(fill = "Repletion Scenario")
+
+repletedVsNonRepleted %>% 
+  filter(Electrolyte == "magnesium") %>%
+   replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  ggplot(data=., aes(x=valuenum, group=repleteVsNon, fill=repleteVsNon)) +
+    geom_density(adjust=1.5, alpha=.4) + 
+    scale_x_continuous(limits = c(0, 7)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+    theme_pubclean() + labs(fill = "Repletion Scenario")
+
+repletedVsNonRepleted %>% 
+  filter(Electrolyte == "phosphate") %>%
+   replace_na(list(preVsPost = "pre_repletion")) %>%
+  filter(preVsPost == "pre_repletion") %>%
+  ggplot(data=., aes(x=valuenum, group=repleteVsNon, fill=repleteVsNon)) +
+    geom_density(adjust=1.5, alpha=.4) + 
+    scale_x_continuous(limits = c(0, 7)) +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1)) + 
+    theme_pubclean() + labs(fill = "Repletion Scenario")
+
+
+
+```
+

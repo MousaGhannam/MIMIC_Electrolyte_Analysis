@@ -1,0 +1,127 @@
+code_standard_name,code,description
+ICD-10,T20.35XA,"Burn of third degree of scalp [any part], initial encounter"
+ICD-10,T21.01XD,"Burn of unspecified degree of chest wall, subsequent encounter"
+ICD-10,T21.01XS,"Burn of unspecified degree of chest wall, sequela"
+ICD-10,T21.02XA,"Burn of unspecified degree of abdominal wall, initial encounter"
+ICD-10,T21.03XA,"Burn of unspecified degree of upper back, initial encounter"
+ICD-10,T21.09XA,"Burn of unspecified degree of other site of trunk, initial encounter"
+ICD-10,T21.13XA,"Burn of first degree of upper back, initial encounter"
+ICD-10,T21.22XA,"Burn of second degree of abdominal wall, initial encounter"
+ICD-10,T22.00XD,"Burn of unspecified degree of shoulder and upper limb, except wrist and hand, unspecified si"
+ICD-10,T22.161D,"Burn of first degree of right scapular region, subsequent encounter"
+ICD-10,T22.30XD,"Burn of third degree of shoulder and upper limb, except wrist and hand, unspecified site, su"
+ICD-10,T23.009A,"Burn of unspecified degree of unspecified hand, unspecified site, initial encounter"
+ICD-10,T24.112A,"Burn of first degree of left thigh, initial encounter"
+ICD-10,T25.221A,"Burn of second degree of right foot, initial encounter"
+ICD-10,T25.321S,"Burn of third degree of right foot, sequela"
+ICD-10,T31.0,Burns involving less than 10% of body surface
+ICD-10,T31.21,Burns involving 20-29% of body surface with 10-19% third degree burns
+ICD-10,T31.22,Burns involving 20-29% of body surface with 20-29% third degree burns
+ICD-10,T31.30,Burns involving 30-39% of body surface with 0% to 9% third degree burns
+ICD9,940.1,Burn periocular area NEC
+ICD9,941.00,Burn NOS head-unspec
+ICD9,941.01,Burn NOS ear
+ICD9,941.03,Burn NOS lip
+ICD9,941.06,Burn NOS scalp
+ICD9,941.08,Burn NOS neck
+ICD9,941.09,Burn NOS head-mult
+ICD9,941.10,1st deg burn head NOS
+ICD9,941.17,1st deg burn face NEC
+ICD9,941.18,1st deg burn neck
+ICD9,941.20,2nd deg burn head NOS
+ICD9,941.21,2nd deg burn ear
+ICD9,941.26,2nd deg burn scalp
+ICD9,941.27,2nd deg burn face NEC
+ICD9,941.28,2nd deg burn neck
+ICD9,941.29,2nd deg burn head-mult
+ICD9,941.33,3rd deg burn lip
+ICD9,941.35,3rd deg burn nose
+ICD9,941.39,3rd deg burn head-mult
+ICD9,941.57,3rd deg burn w loss-face NEC
+ICD9,942.00,Burn NOS trunk-unspec
+ICD9,942.01,Burn NOS breast
+ICD9,942.02,Burn NOS chest wall
+ICD9,942.03,Burn NOS abdominal wall
+ICD9,942.04,Burn NOS back
+ICD9,942.05,Burn NOS genitalia
+ICD9,942.11,1st deg burn breast
+ICD9,942.12,1st deg burn chest wall
+ICD9,942.13,1st deg burn abdomn wall
+ICD9,942.14,1st deg burn back
+ICD9,942.19,1st deg burn trunk NEC
+ICD9,942.21,2nd deg burn breast
+ICD9,942.22,2nd deg burn chest wall
+ICD9,942.23,2nd deg burn abdomn wall
+ICD9,942.24,2nd deg burn back
+ICD9,942.25,2nd deg burn genitalia
+ICD9,942.29,2nd deg burn trunk NEC
+ICD9,942.32,3rd deg burn chest wall
+ICD9,942.33,3rd deg burn abdomn wall
+ICD9,942.35,3rd deg burn genitalia
+ICD9,943.00,Burn NOS arm-unspec
+ICD9,943.01,Burn NOS forearm
+ICD9,943.03,Burn NOS upper arm
+ICD9,943.05,Burn NOS shoulder
+ICD9,943.13,1st deg burn upper arm
+ICD9,943.20,2nd deg burn arm NOS
+ICD9,943.21,2nd deg burn forearm
+ICD9,943.25,2nd deg burn shoulder
+ICD9,943.29,2nd deg burn arm-mult
+ICD9,943.34,3rd deg burn axilla
+ICD9,943.41,Deep 3 deg burn forearm
+ICD9,943.51,3rd deg burn w loss-forearm
+ICD9,943.53,3rd deg burn w loss-upper arm
+ICD9,944.00,Burn NOS hand-unspec
+ICD9,944.01,Burn NOS finger
+ICD9,944.02,Burn NOS thumb
+ICD9,944.03,Burn NOS mult fingers
+ICD9,944.07,Burn NOS wrist
+ICD9,944.10,1st deg burn hand NOS
+ICD9,944.11,1st deg burn finger
+ICD9,944.12,1st deg burn thumb
+ICD9,944.16,1st deg burn back of hand
+ICD9,944.17,1st deg burn wrist
+ICD9,944.20,2nd deg burn hand NOS
+ICD9,944.21,2nd deg burn finger
+ICD9,944.22,2nd deg burn thumb
+ICD9,944.23,2nd deg burn mult finger
+ICD9,944.24,2nd deg burn fingr w thumb
+ICD9,944.25,2nd deg burn palm
+ICD9,944.26,2nd deg burn back of hand
+ICD9,944.27,2nd deg burn wrist
+ICD9,944.51,3rd deg burn w loss-finger
+ICD9,945.00,Burn NOS leg-unspec
+ICD9,945.01,Burn NOS toe
+ICD9,945.02,Burn NOS foot
+ICD9,945.03,Burn NOS ankle
+ICD9,945.04,Burn NOS lower leg
+ICD9,945.06,Burn NOS thigh
+ICD9,945.09,Burn NOS leg-multiple
+ICD9,945.11,1st deg burn toe
+ICD9,945.13,1st deg burn ankle
+ICD9,945.14,1st deg burn lower leg
+ICD9,945.15,1st deg burn knee
+ICD9,945.16,1st deg burn thigh
+ICD9,945.21,2nd deg burn toe
+ICD9,945.22,2nd deg burn foot
+ICD9,945.23,2nd deg burn ankle
+ICD9,945.24,2nd deg burn lower leg
+ICD9,945.25,2nd deg burn knee
+ICD9,945.26,2nd deg burn thigh
+ICD9,945.30,3rd deg burn leg NOS
+ICD9,945.31,3rd deg burn toe
+ICD9,945.32,3rd deg burn foot
+ICD9,945.34,3rd deg burn low leg
+ICD9,945.35,3rd deg burn knee
+ICD9,945.36,3rd deg burn thigh
+ICD9,945.39,3rd deg burn leg-mult
+ICD9,946.0,Burn NOS multiple site
+ICD9,947.0,Burn of mouth & pharynx
+ICD9,947.1,Burn larynx/trachea/lung
+ICD9,947.2,Burn of esophagus
+ICD9,949.0,Burn NOS
+ICD9,E890.3,Priv dwel fire-burning
+ICD9,E891.3,Fire in bldg-burning
+ICD9,E895,Burn acc in privat dwell
+ICD9,E958.1,"Injury-burn, fire"
+ICD9,E988.1,"Undeterm circ-burn, fire"

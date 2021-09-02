@@ -1,0 +1,13 @@
+code,code_standard_name,description
+135,ICD9,Sarcoidosis
+321.4,ICD9,Meningit d/t sarcoidosis
+D86.0,ICD-10,Sarcoidosis of lung
+D86.1,ICD-10,Sarcoidosis of lymph nodes
+D86.2,ICD-10,Sarcoidosis of lung with sarcoidosis of lymph nodes
+D86.3,ICD-10,Sarcoidosis of skin
+D86.81,ICD-10,Sarcoid meningitis
+D86.82,ICD-10,Multiple cranial nerve palsies in sarcoidosis
+D86.83,ICD-10,Sarcoid iridocyclitis
+D86.85,ICD-10,Sarcoid myocarditis
+D86.89,ICD-10,Sarcoidosis of other sites
+D86.9,ICD-10,"Sarcoidosis, unspecified"

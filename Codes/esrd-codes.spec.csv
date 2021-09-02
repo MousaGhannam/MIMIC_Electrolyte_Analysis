@@ -1,0 +1,13 @@
+code_standard_name,code,description
+ICD-10,I12.0,Hypertensive chronic kidney disease with stage 5 chronic kidney disease or end stage renal disease
+ICD-10,I13.11,"Hypertensive heart and chronic kidney disease without heart failure, with stage 5 chronic kidn"
+ICD-10,I13.2,Hypertensive heart and chronic kidney disease with heart failure and with stage 5 chronic kidne
+ICD-10,I15.1,Hypertension secondary to other renal disorders
+ICD-10,N18.5,"Chronic kidney disease, stage 5"
+ICD-10,N18.6,End stage renal disease
+ICD-10,Z99.2,Dependence on renal dialysis
+ICD9,585.5,Chron kidney dis stage V
+ICD9,585.6,End stage renal disease
+ICD9,V45.1,Renal dialysis status
+ICD9,V45.11,Renal dialysis status
+ICD9,V56.0,Renal dialysis encounter

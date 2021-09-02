@@ -1,0 +1,250 @@
+code_standard_name,code,description
+ICD-10,C64.1,"Malignant neoplasm of right kidney, except renal pelvis"
+ICD-10,C64.2,"Malignant neoplasm of left kidney, except renal pelvis"
+ICD-10,C64.9,"Malignant neoplasm of unspecified kidney, except renal pelvis"
+ICD-10,C65.1,Malignant neoplasm of right renal pelvis
+ICD-10,C65.2,Malignant neoplasm of left renal pelvis
+ICD-10,C74.10,Malignant neoplasm of medulla of unspecified adrenal gland
+ICD-10,C74.92,Malignant neoplasm of unspecified part of left adrenal gland
+ICD-10,C79.00,Secondary malignant neoplasm of unspecified kidney and renal pelvis
+ICD-10,C79.01,Secondary malignant neoplasm of right kidney and renal pelvis
+ICD-10,C79.02,Secondary malignant neoplasm of left kidney and renal pelvis
+ICD-10,C79.70,Secondary malignant neoplasm of unspecified adrenal gland
+ICD-10,C79.71,Secondary malignant neoplasm of right adrenal gland
+ICD-10,C79.72,Secondary malignant neoplasm of left adrenal gland
+ICD-10,D17.71,Benign lipomatous neoplasm of kidney
+ICD-10,D30.01,Benign neoplasm of right kidney
+ICD-10,D30.02,Benign neoplasm of left kidney
+ICD-10,D35.00,Benign neoplasm of unspecified adrenal gland
+ICD-10,D35.01,Benign neoplasm of right adrenal gland
+ICD-10,D35.02,Benign neoplasm of left adrenal gland
+ICD-10,D44.11,Neoplasm of uncertain behavior of right adrenal gland
+ICD-10,D44.12,Neoplasm of uncertain behavior of left adrenal gland
+ICD-10,D63.1,Anemia in chronic kidney disease
+ICD-10,D63.1,Anemia in chronic kidney disease (manifestation)
+ICD-10,E08.22,Diabetes mellitus due to underlying condition with diabetic chronic kidney disease (manifestat
+ICD-10,E10.22,Type 1 diabetes mellitus with diabetic chronic kidney disease
+ICD-10,E10.29,Type 1 diabetes mellitus with other diabetic kidney complication
+ICD-10,E11.22,Type 2 diabetes mellitus with diabetic chronic kidney disease
+ICD-10,E11.29,Type 2 diabetes mellitus with other diabetic kidney complication
+ICD-10,E13.22,Other specified diabetes mellitus with diabetic chronic kidney disease
+ICD-10,E27.8,Other specified disorders of adrenal gland
+ICD-10,E27.9,"Disorder of adrenal gland, unspecified"
+ICD-10,I12.0,Hypertensive chronic kidney disease with stage 5 chronic kidney disease or end stage renal dise
+ICD-10,I12.0,Hypertensive chronic kidney disease with stage 5 chronic kidney disease or end stage renal disease
+ICD-10,I12.9,"Hypertensive chronic kidney disease with stage 1 through stage 4 chronic kidney disease, or uns"
+ICD-10,I12.9,"Hypertensive chronic kidney disease with stage 1 through stage 4 chronic kidney disease, or unspecified chronic kidney disease"
+ICD-10,I13.0,Hypertensive heart and chronic kidney disease with heart failure and stage 1 through stage 4 ch
+ICD-10,I13.0,"Hypertensive heart and chronic kidney disease with heart failure and stage 1 through stage 4 chronic kidney disease, or unspecified chronic kidney disease"
+ICD-10,I13.10,"Hypertensive heart and chronic kidney disease without heart failure, with stage 1 through stag"
+ICD-10,I13.10,"Hypertensive heart and chronic kidney disease without heart failure, with stage 1 through stage 4 chronic kidney disease, or unspecified chronic kidney disease"
+ICD-10,I13.11,"Hypertensive heart and chronic kidney disease without heart failure, with stage 5 chronic kidn"
+ICD-10,I13.2,Hypertensive heart and chronic kidney disease with heart failure and with stage 5 chronic kidne
+ICD-10,I13.2,"Hypertensive heart and chronic kidney disease with heart failure and with stage 5 chronic kidney disease, or end stage renal disease"
+ICD-10,I15.1,Hypertension secondary to other renal disorders
+ICD-10,I70.1,Atherosclerosis of renal artery
+ICD-10,I72.2,Aneurysm of renal artery
+ICD-10,I77.73,Dissection of renal artery
+ICD-10,I82.3,Embolism and thrombosis of renal vein
+ICD-10,K76.7,Hepatorenal syndrome
+ICD-10,M31.30,Wegener's granulomatosis without renal involvement
+ICD-10,M31.31,Wegener's granulomatosis with renal involvement
+ICD-10,N13.2,Hydronephrosis with renal and ureteral calculous obstruction
+ICD-10,N15.1,Renal and perinephric abscess
+ICD-10,N16,Renal tubulo-interstitial disorders in diseases classified elsewhere (manifestation)
+ICD-10,N17.0,Acute kidney failure with tubular necrosis
+ICD-10,N17.8,Other acute kidney failure
+ICD-10,N17.9,"Acute kidney failure, unspecified"
+ICD-10,N18.1,"Chronic kidney disease, stage 1"
+ICD-10,N18.2,"Chronic kidney disease, stage 2 (mild)"
+ICD-10,N18.3,"Chronic kidney disease, stage 3 (moderate)"
+ICD-10,N18.4,"Chronic kidney disease, stage 4 (severe)"
+ICD-10,N18.5,"Chronic kidney disease, stage 5"
+ICD-10,N18.6,End stage renal disease
+ICD-10,N18.9,"Chronic kidney disease, unspecified"
+ICD-10,N19,Unspecified kidney failure
+ICD-10,N20.0,Calculus of kidney
+ICD-10,N20.2,Calculus of kidney with calculus of ureter
+ICD-10,N23,Unspecified renal colic
+ICD-10,N25.0,Renal osteodystrophy
+ICD-10,N25.81,Secondary hyperparathyroidism of renal origin
+ICD-10,N25.89,Other disorders resulting from impaired renal tubular function
+ICD-10,N26.1,Atrophy of kidney (terminal)
+ICD-10,N26.9,"Renal sclerosis, unspecified"
+ICD-10,N27.0,"Small kidney, unilateral"
+ICD-10,N28.0,Ischemia and infarction of kidney
+ICD-10,N28.1,"Cyst of kidney, acquired"
+ICD-10,N28.89,Other specified disorders of kidney and ureter
+ICD-10,N28.9,"Disorder of kidney and ureter, unspecified"
+ICD-10,N99.0,Postprocedural (acute) (chronic) kidney failure
+ICD-10,O03.82,Renal failure following complete or unspecified spontaneous abortion
+ICD-10,O10.213,"Pre-existing hypertensive chronic kidney disease complicating pregnancy, third trimester"
+ICD-10,O10.22,Pre-existing hypertensive chronic kidney disease complicating childbirth
+ICD-10,O23.01,"Infections of kidney in pregnancy, first trimester"
+ICD-10,O23.02,"Infections of kidney in pregnancy, second trimester"
+ICD-10,O23.03,"Infections of kidney in pregnancy, third trimester"
+ICD-10,O26.832,"Pregnancy related renal disease, second trimester"
+ICD-10,O26.833,"Pregnancy related renal disease, third trimester"
+ICD-10,O86.21,Infection of kidney following delivery
+ICD-10,O90.4,Postpartum acute kidney failure
+ICD-10,P96.0,Congenital renal failure
+ICD-10,Q27.2,Other congenital malformations of renal artery
+ICD-10,Q60.0,"Renal agenesis, unilateral"
+ICD-10,Q60.4,"Renal hypoplasia, bilateral"
+ICD-10,Q61.00,"Congenital renal cyst, unspecified"
+ICD-10,Q61.02,Congenital multiple renal cysts
+ICD-10,Q61.2,"Polycystic kidney, adult type"
+ICD-10,Q61.3,"Polycystic kidney, unspecified"
+ICD-10,Q61.5,Medullary cystic kidney
+ICD-10,Q61.9,"Cystic kidney disease, unspecified"
+ICD-10,Q62.39,Other obstructive defects of renal pelvis and ureter
+ICD-10,Q63.1,"Lobulated, fused and horseshoe kidney"
+ICD-10,Q63.2,Ectopic kidney
+ICD-10,R39.2,Extrarenal uremia
+ICD-10,R94.4,Abnormal results of kidney function studies
+ICD-10,S37.002A,"Unspecified injury of left kidney, initial encounter"
+ICD-10,S37.009A,"Unspecified injury of unspecified kidney, initial encounter"
+ICD-10,S37.021A,"Major contusion of right kidney, initial encounter"
+ICD-10,S37.031A,"Laceration of right kidney, unspecified degree, initial encounter"
+ICD-10,S37.031D,"Laceration of right kidney, unspecified degree, subsequent encounter"
+ICD-10,S37.032D,"Laceration of left kidney, unspecified degree, subsequent encounter"
+ICD-10,S37.039A,"Laceration of unspecified kidney, unspecified degree, initial encounter"
+ICD-10,S37.051A,"Moderate laceration of right kidney, initial encounter"
+ICD-10,S37.052A,"Moderate laceration of left kidney, initial encounter"
+ICD-10,T81.711A,"Complication of renal artery following a procedure, not elsewhere classified, initial encoun"
+ICD-10,T86.10,Unspecified complication of kidney transplant
+ICD-10,T86.11,Kidney transplant rejection
+ICD-10,T86.12,Kidney transplant failure
+ICD-10,T86.13,Kidney transplant infection
+ICD-10,T86.19,Other complication of kidney transplant
+ICD-10,Y84.1,"Kidney dialysis as the cause of abnormal reaction of the patient, or of later complication, wit"
+ICD-10,Y84.1,"Kidney dialysis as the cause of abnormal reaction of the patient, or of later complication, without mention of misadventure at the time of the procedure"
+ICD-10,Z48.22,Encounter for aftercare following kidney transplant
+ICD-10,Z52.4,Kidney donor
+ICD-10,Z80.51,Family history of malignant neoplasm of kidney
+ICD-10,Z84.1,Family history of disorders of kidney and ureter
+ICD-10,Z85.528,Personal history of other malignant neoplasm of kidney
+ICD-10,Z85.53,Personal history of malignant neoplasm of renal pelvis
+ICD-10,Z90.5,Acquired absence of kidney
+ICD-10,Z91.15,Patient's noncompliance with renal dialysis
+ICD-10,Z94.0,Kidney transplant status
+ICD-10,Z99.2,Dependence on renal dialysis
+ICD9,189.0,Malig neopl kidney
+ICD9,189.1,Malig neo renal pelvis
+ICD9,194.0,Malign neopl adrenal
+ICD9,198.0,Second malig neo kidney
+ICD9,198.7,Second malig neo adrenal
+ICD9,209.24,Mal carcin tumor kidney
+ICD9,223.0,Benign neoplasm kidney
+ICD9,223.1,Benign neo renal pelvis
+ICD9,227.0,Benign neoplasm adrenal
+ICD9,236.91,Unc behav neo kidney
+ICD9,237.2,Unc behav neo adrenal
+ICD9,249.40,Sec diab mel w renal manif not std uncntrld or NOS
+ICD9,249.41,Sec diab mel w renal manif uncntrld
+ICD9,249.41,Sec DM renal uncontrld
+ICD9,250.42,DMII renal uncntrld
+ICD9,250.43,DMI renal uncntrld
+ICD9,252.02,Sec hyprprthyrd nonrenal
+ICD9,255.4,Corticoadrenal insuffic
+ICD9,255.5,Adrenal hypofunction NEC
+ICD9,255.6,Medulloadrenal hyperfunc
+ICD9,255.8,Adrenal disorder NEC
+ICD9,255.9,Adrenal disorder NOS
+ICD9,271.4,Renal glycosuria
+ICD9,285.21,Anemia in chr kidney dis
+ICD9,440.1,Renal artery atheroscler
+ICD9,442.1,Renal artery aneurysm
+ICD9,443.23,Dissection renal artery
+ICD9,445.81,"Atheroembolism, kidney"
+ICD9,447.3,Renal artery hyperplasia
+ICD9,453.3,Renal vein thrombosis
+ICD9,572.4,Hepatorenal syndrome
+ICD9,584.5,Ac kidney fail w lesn tubular necr
+ICD9,584.5,"Ac kidny fail, tubr necr"
+ICD9,584.6,Ac kidney fail w lesn renal cort necr
+ICD9,584.6,"Ac kidny fail, cort necr"
+ICD9,584.7,Ac kidney fail w lesn renal medul necr
+ICD9,584.8,Ac kidney fail w patholog lesn kidney
+ICD9,584.8,Acute kidney failure NEC
+ICD9,584.9,"Ac kidney failure, unspec"
+ICD9,584.9,Acute kidney failure NOS
+ICD9,585,Chronic renal failure
+ICD9,585,CHRONIC RENAL FAILURE
+ICD9,585.1,Chro kidney dis stage I
+ICD9,585.2,Chro kidney dis stage II
+ICD9,585.3,Chr kidney dis stage III
+ICD9,585.4,Chr kidney dis stage IV
+ICD9,585.5,Chron kidney dis stage V
+ICD9,585.6,End stage renal disease
+ICD9,585.9,Chronic kidney dis NOS
+ICD9,586,Renal failure NOS
+ICD9,587,Renal sclerosis NOS
+ICD9,588.0,Renal osteodystrophy
+ICD9,588.81,Sec hyperparathyrd-renal
+ICD9,588.9,Impaired renal funct NOS
+ICD9,589.0,Unilateral small kidney
+ICD9,589.1,Bilateral small kidneys
+ICD9,590.2,Renal/perirenal abscess
+ICD9,590.9,Infection of kidney NOS
+ICD9,592.0,Calculus of kidney
+ICD9,593.1,Hypertrophy of kidney
+ICD9,593.2,"Cyst of kidney, acquired"
+ICD9,593.81,Renal vascular disorder
+ICD9,593.89,Renal & ureteral dis NEC
+ICD9,593.9,Renal & ureteral dis NOS
+ICD9,642.11,Renal hyperten pg-deliv
+ICD9,642.13,Renal hyperten-antepart
+ICD9,642.14,Renal hyperten-postpart
+ICD9,646.21,Renal dis NOS-delivered
+ICD9,646.22,Renal dis NOS-del w p/p
+ICD9,646.23,Renal dis NOS-antepartum
+ICD9,646.24,Renal dis NOS-postpartum
+ICD9,669.32,Ac kidney fail-del w p/p
+ICD9,669.32,"Ac kidney fail fol L&D, postpart complic"
+ICD9,669.34,"Ac kidney fail fol L&D, postpart"
+ICD9,669.34,Ac kidney fail-postpart
+ICD9,747.62,Renal vessel anomaly
+ICD9,753.0,Renal agenesis
+ICD9,753.10,Cystic kidney diseas NOS
+ICD9,753.11,Congenital renal cyst
+ICD9,753.12,Polycystic kidney NOS
+ICD9,753.15,Renal dysplasia
+ICD9,753.16,Medullary cystic kidney
+ICD9,753.17,Medullary sponge kidney
+ICD9,753.19,Cystic kidney diseas NEC
+ICD9,753.3,Kidney anomaly NEC
+ICD9,759.1,Adrenal gland anomaly
+ICD9,772.5,NB adrenal hemorrhage
+ICD9,788.0,Renal colic
+ICD9,794.4,Abn kidney funct study
+ICD9,866.00,Kidney injury NOS-closed
+ICD9,866.01,Kidney hematoma-closed
+ICD9,866.02,Kidney laceration-closed
+ICD9,866.03,Kidney disruption-closed
+ICD9,866.10,Kidney injury NOS-open
+ICD9,866.11,Kidney hematoma-open
+ICD9,866.12,Kidney laceration-open
+ICD9,866.13,Kidney disruption-open
+ICD9,868.01,Adrenal gland injury-cl
+ICD9,902.41,Injury renal artery
+ICD9,902.42,Injury renal vein
+ICD9,996.81,Comp kidney transplant
+ICD9,996.81,Compl kidney transplant
+ICD9,997.72,Vasc comp renal artery
+ICD9,E879.1,Abn react-renal dialysis
+ICD9,V10.52,Hx of kidney malignancy
+ICD9,V10.53,Hx malig renal pelvis
+ICD9,V16.51,Family hx-kidney malig
+ICD9,V18.61,Fam hx-polycystic kidney
+ICD9,V18.69,Fam hx-kidney dis NEC
+ICD9,V42.0,Kidney transplant status
+ICD9,V45.1,Renal dialysis status
+ICD9,V45.1,RENAL DIALYSIS STATUS
+ICD9,V45.11,Postprocedural renal dialysis stat
+ICD9,V45.11,Renal dialysis status
+ICD9,V45.12,Noncmplnt w renal dialys
+ICD9,V45.12,Noncompliance w renal dialysis
+ICD9,V45.73,Acquired absence kidney
+ICD9,V56.0,Renal dialysis encounter
+ICD9,V59.4,Kidney donor

@@ -1,0 +1,483 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+inputevents_mv <- tbl_mimic(inputevents_mv)
+```
+
+
+#New Prisma
+
+#1
+```{r}
+all_repletions_MV_new_AEs %>%
+  filter(Electrolyte != "calcium") %>%
+  mutate(charttime.lab= as_datetime(charttime.lab), endtime=as_datetime(endtime), starttime = as_datetime(starttime)) %>%
+  mutate(isRecentPre = difftime(starttime, charttime.lab, units = "hours") <= 24 & difftime(starttime, charttime.lab, units = "hours") > 0 ) %>%
+  mutate(isRecentPost = difftime(endtime, charttime.lab, units = "hours") >= -24 & difftime(endtime, charttime.lab, units = "hours") < 0 ) %>%
+    mutate(isNotRecentPre = difftime(starttime, charttime.lab, units = "hours") > 24, isNotRecentPost =  difftime(endtime, charttime.lab, units = "hours") < -24) -> all_electrolyte_repLabEvents
+
+#ICU Stays in MV database: 23,387
+inputevents_mv %>%
+select(icustay_id) %>%
+  distinct() %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+#ICU Stays with repletion data: 
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(icustay_id) %>%
+  distinct() %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+#ICU Stays without repletion data: 18,112
+23387 - 14304
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(icustay_id, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(charttime.lab, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+```
+
+#2 
+```{r}
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  filter(Electrolyte != "calcium") %>%
+  inner_join(hadm_id_table, by = "hadm_id") %>%
+  select(icustay_id, .id) %>%
+  distinct() %>%
+  group_by( .id) %>%
+  summarize(obs = n())
+
+all_electrolyte_repLabEvents %>% #Run exclusions on all of them 
+  ungroup()%>%
+  anti_join(hadm_id_table, by = "hadm_id") -> all_electrolyte_repLabEvents
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(icustay_id) %>%
+  distinct() %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(icustay_id, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  select(charttime.lab, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+
+```
+
+#3
+```{r}
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  mutate(is_extraneous_value = case_when((Electrolyte == "potassium" & isRecentPre == TRUE & valuenum < 2) | (Electrolyte == "potassium" & isRecentPre == TRUE & valuenum > 7) ~ T, 
+    Electrolyte == "magnesium"  & valuenum > 5 ~ T,
+    Electrolyte == "magnesium"  & valuenum < 1 ~ T,
+    Electrolyte == "phosphate"  & valuenum > 7 ~ T,
+    Electrolyte == "phosphate"  & valuenum < 0.5 ~ T,
+     flag == "delta" ~ T, T ~ FALSE)) %>%
+    filter(is_extraneous_value == T) -> outliers_1
+  
+  outliers_1 %>%
+   ungroup()%>%
+    select(charttime.lab, Electrolyte) %>%
+    distinct() %>%
+    group_by(Electrolyte) %>%
+    summarize(n = n()) %>% 
+    arrange(desc(n)) %>%
+    kable()
+
+all_electrolyte_repLabEvents %>%
+  ungroup()%>%
+  mutate(is_extraneous_value = case_when((Electrolyte == "potassium" & isRecentPre == TRUE & valuenum < 2) | (Electrolyte == "potassium" & isRecentPre == TRUE & valuenum > 7) ~ T, 
+    Electrolyte == "magnesium"  & valuenum > 5 ~ T,
+    Electrolyte == "magnesium"  & valuenum < 1 ~ T,
+    Electrolyte == "phosphate"  & valuenum > 5 ~ T,
+    Electrolyte == "phosphate"  & valuenum < 0.5 ~ T,
+     flag == "delta" ~ T, T ~ FALSE)) %>%
+    filter(is_extraneous_value == F) -> allEs_pre_post_repletions_MV_new_NoOutliers
+
+# all_electrolyte_repLabEvents %>%
+#   ungroup()%>%
+#   mutate(is_extraneous_value = case_when((Electrolyte == "potassium" & isRecentPre == TRUE & valuenum < 2) | (Electrolyte == "potassium" & isRecentPre == TRUE & valuenum > 7) ~ T, 
+#     Electrolyte == "magnesium"  & valuenum > 5 ~ T,
+#     Electrolyte == "magnesium"  & valuenum < 1 ~ T,
+#     Electrolyte == "phosphate"  & valuenum > 5 ~ T,
+#     Electrolyte == "phosphate"  & valuenum < 0.5 ~ T,
+#      flag == "delta" ~ T, T ~ FALSE)) %>%
+#     mutate(abnormal_status = case_when( Electrolyte == "potassium" & valuenum > 5.2 ~ "aboveLimit",
+#   Electrolyte == "potassium"  & valuenum < 3.2 ~ "belowLimit", 
+#   Electrolyte == "magnesium" & valuenum > 2.7 ~ "aboveLimit",
+#   Electrolyte == "magnesium"  & valuenum < 1.5 ~ "belowLimit", 
+#   Electrolyte == "calcium"  & flag == "abnormal" & valuenum > 1.32 ~ "aboveLimit",
+#   Electrolyte == "calcium"  & flag == "abnormal" & valuenum < 1.12 ~ "belowLimit",
+#   Electrolyte == "phosphate"  & valuenum > 4.5 ~ "aboveLimit",
+#   Electrolyte == "phosphate"  & valuenum < 2.6 ~ "belowLimit", 
+#   T ~ "normalLimits")) -> allEs_pre_post_repletions_MV_new_NoOutliers
+
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  ungroup()%>%
+  select(icustay_id) %>%
+  distinct() %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  ungroup()%>%
+  select(icustay_id, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  ungroup()%>%
+  select(charttime.lab, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+```
+
+#4
+```{r}
+#Our pick: 3.2-5.2 (K), 1.5-2.7 (Mg), 2
+#Their pick 
+#Potassium #3.3 - 5.2
+##Magnesium: 1.8 - 2.6
+## Phosphate: 2.7 - 4.6
+
+
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+mutate(abnormal_status = case_when( Electrolyte == "potassium" & valuenum > 5.2 ~ "aboveLimit",
+  Electrolyte == "potassium"  & valuenum < 3.3 ~ "belowLimit", 
+  Electrolyte == "magnesium" & valuenum > 2.6 ~ "aboveLimit",
+  Electrolyte == "magnesium"  & valuenum < 1.8 ~ "belowLimit", 
+  Electrolyte == "calcium"  & flag == "abnormal" & valuenum > 1.32 ~ "aboveLimit",
+  Electrolyte == "calcium"  & flag == "abnormal" & valuenum < 1.12 ~ "belowLimit",
+  Electrolyte == "phosphate"  & valuenum > 4.6 ~ "aboveLimit",
+  Electrolyte == "phosphate"  & valuenum < 2.7 ~ "belowLimit", 
+  T ~ "normalLimits")) -> allEs_pre_post_repletions_MV_new_NoOutliers
+
+#Conservative means that mislabeled abnormal values are removed 
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  filter((abnormal_status == "normalLimits" & flag == "abnormal") | (abnormal_status == "belowLimit" & flag == is.na(flag)) | (abnormal_status == "aboveLimit" & is.na(flag))) -> excluded_Conservative_values
+
+  excluded_Conservative_values %>%
+   ungroup()%>%
+    select(charttime.lab, Electrolyte) %>%
+    distinct() %>%
+    group_by(Electrolyte) %>%
+    summarize(n = n()) %>% 
+    arrange(desc(n)) %>%
+    kable()
+  
+allEs_pre_post_repletions_MV_new_NoOutliers %>%
+  filter((abnormal_status == "normalLimits" & is.na(flag)) | (abnormal_status == "belowLimit" & flag == "abnormal") | (abnormal_status == "aboveLimit" & flag == "abnormal")) -> allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  ungroup()%>%
+  select(icustay_id) %>%
+  distinct() %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  ungroup()%>%
+  select(icustay_id, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  ungroup()%>%
+  select(charttime.lab, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+
+```
+
+
+#5
+```{r}
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>% 
+  filter(isRecentPre) %>% 
+  group_by(subject_id, hadm_id,charttime.lab, Electrolyte) %>%
+  mutate(isMostRecentRepletion = starttime == min(starttime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id,hadm_id,starttime,endtime,Electrolyte) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == max(charttime.lab)) %>%
+  mutate(numberOfLabValues = case_when(
+    n() == 1 ~ "1",
+    n() == 2 ~ "2", 
+    n() >=  3 ~ "3+"))  %>% 
+  ungroup() -> postExclusionAll_new_pre
+
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  filter(isRecentPost) %>% 
+  group_by(subject_id, hadm_id,charttime.lab,Electrolyte) %>%
+  mutate(isMostRecentRepletion = endtime == max(endtime)) %>%
+  filter(isMostRecentRepletion) %>%
+  ungroup() %>% 
+  group_by(subject_id,hadm_id,starttime,endtime,Electrolyte) %>%
+  mutate(isMostRecentLabEvent = charttime.lab == min(charttime.lab)) %>%
+  mutate(numberOfLabValues = case_when(
+    n() == 1 ~ "1",
+    n() == 2 ~ "2", 
+    n() >=  3 ~ "3+"))  %>% 
+  ungroup()  -> postExclusionAll_new_post
+
+postExclusionAll_new_preAndPost_within24Hrs <- bind_rows(list(pre_repletion = postExclusionAll_new_pre, post_repletion = postExclusionAll_new_post), .id = "preVsPost")
+
+#Scenario A
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE %>%
+  filter(isNotRecentPre, !isRecentPre,!isRecentPost) -> scenarioANonRepletions
+
+
+
+#Scenario B 
+postExclusionAll_new_preAndPost_within24Hrs %>%
+  group_by(subject_id,hadm_id,Electrolyte, linkorderid) %>%  
+  mutate(isPreAndPost = any(isRecentPre) & any(isRecentPost) == TRUE) %>%
+  filter(isPreAndPost) %>%
+  mutate(is1L = (isRecentPre == TRUE & numberOfLabValues == 1)) %>%
+  mutate(isML = (isRecentPre == TRUE & numberOfLabValues > 1)) -> pairedDataExcluded
+
+pairedDataExcluded %>% 
+  filter(is1L | isRecentPost) %>%
+  filter(isMostRecentLabEvent) -> scenarioBRepletions
+  
+pairedDataExcluded %>% 
+  filter(is1L | isRecentPost) -> scenarioBRepletions_includingAll
+
+scenarioBRepletions
+
+#Scenario C 
+pairedDataExcluded %>% 
+  filter(isML | isRecentPost) %>%
+  filter(isMostRecentLabEvent) -> scenarioCRepletions
+
+scenarioCRepletions
+
+repletedVsNonRepleted
+
+```
+
+#Combine them all
+```{r}
+repletedVsNonRepleted <- bind_rows(list("1L_1R"= scenarioBRepletions,"ML_1R" = scenarioCRepletions, "1L_NR" = scenarioANonRepletions), .id = "repleteVsNon")
+
+# repletedVsNonRepleted1 <- bind_rows(list("1L_1R"= scenarioBRepletions_includingAll,"ML_1R" = scenarioCRepletions, "1L_NR" = scenarioANonRepletions), .id = "repleteVsNon") 
+```
+
+
+```{r}
+  scenarioANonRepletions %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+  
+  scenarioBRepletions %>%
+  filter(Electrolyte != "calcium") %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+  scenarioCRepletions %>%
+  filter(Electrolyte != "calcium") %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+  
+repletedVsNonRepleted %>%
+  filter(repleteVsNon != "1L_NR") %>%
+  group_by(repleteVsNon) %>%
+  summarize(observations = n()) %>%
+  mutate(percentage = observations / sum(observations) * 100)
+```
+
+
+
+
+```{r}
+
+#Lab values more than 24 hours before a repletion 
+allEs_pre_post_repletions_MV_new_NoOutliers_final_exclusions_CONSERVARTIVE  %>% 
+  group_by(subject_id, hadm_id,charttime.lab, Electrolyte) %>%
+  # filter(charttime.lab <= starttime - 24 )
+  mutate(isMostRecentPreRepletion = starttime == min(starttime)) %>%
+  filter(isMostRecentPreRepletion) %>%
+  filter(isNotRecentPre, !isRecentPre, !isRecentPost) -> labValuesNonRepletions24hrsPRErepletion
+
+labValuesNonRepletions24hrsPRErepletion %>%
+  ungroup()%>%
+  select(icustay_id) %>%
+  distinct() %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+labValuesNonRepletions24hrsPRErepletion %>%
+  ungroup()%>%
+  select(icustay_id, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+labValuesNonRepletions24hrsPRErepletion %>%
+  ungroup()%>%
+  select(linkorderid, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+labValuesNonRepletions24hrsPRErepletion %>%
+  ungroup()%>%
+  select(charttime.lab, Electrolyte) %>%
+  distinct() %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+
+```
+
+
+```{r}
+repEventsK %>% 
+  inner_join(labEventsK, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  distinct() %>%
+  rename(charttime.lab = charttime) %>%
+  collect() -> k_lab_repletions_MV_new
+
+repEventsK %>% collect() -> repEventsK
+
+labEventsK %>%
+  anti_join(repEventsK, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  filter(hadm_id != "NA") -> non_replete_K_values
+  
+labEventsMg %>% collect() -> labEventsMg
+repEventsMg %>% collect() -> repEventsMg
+
+labEventsMg %>%
+  anti_join(repEventsMg, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  filter(hadm_id != "NA") -> non_replete_Mg_values
+
+labEventsPh %>% collect() -> labEventsPh
+repEventsPh %>% collect() -> repEventsPh
+
+labEventsPh %>%
+  anti_join(repEventsPh, by=c("subject_id" = "subject_id", "hadm_id" = "hadm_id")) %>%
+  filter(hadm_id != "NA") -> non_replete_Ph_values
+
+nonRepletedValuesAll <- bind_rows(list(potassium = non_replete_K_values, magnesium = non_replete_Mg_values, phosphate = non_replete_Ph_values), .id = "Electrolyte")
+
+nonRepletedValuesAll %>%
+  group_by(Electrolyte) %>%
+  summarize(n = n()) %>% 
+  arrange(desc(n)) %>%
+  kable()
+```
+

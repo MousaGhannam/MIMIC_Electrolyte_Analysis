@@ -1,0 +1,18 @@
+code_standard_name,code,description
+ICD-10,I12.9,"Hypertensive chronic kidney disease with stage 1 through stage 4 chronic kidney disease, or uns"
+ICD-10,I12.9,"Hypertensive chronic kidney disease with stage 1 through stage 4 chronic kidney disease, or unspecified chronic kidney disease"
+ICD-10,I13.0,Hypertensive heart and chronic kidney disease with heart failure and stage 1 through stage 4 ch
+ICD-10,I13.0,"Hypertensive heart and chronic kidney disease with heart failure and stage 1 through stage 4 chronic kidney disease, or unspecified chronic kidney disease"
+ICD-10,I13.10,"Hypertensive heart and chronic kidney disease without heart failure, with stage 1 through stage 4 chronic kidney disease, or unspecified chronic kidney disease"
+ICD-10,N18.1,"Chronic kidney disease, stage 1"
+ICD-10,N18.2,"Chronic kidney disease, stage 2 (mild)"
+ICD-10,N18.3,"Chronic kidney disease, stage 3 (moderate)"
+ICD-10,N18.4,"Chronic kidney disease, stage 4 (severe)"
+ICD-10,N18.9,"Chronic kidney disease, unspecified"
+ICD-10,T86.11,Kidney transplant rejection
+ICD-10,T86.12,Kidney transplant failure
+ICD9,585,Chronic renal failure
+ICD9,585.1,Chro kidney dis stage I
+ICD9,585.2,Chro kidney dis stage II
+ICD9,585.3,Chr kidney dis stage III
+ICD9,585.4,Chr kidney dis stage IV

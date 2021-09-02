@@ -1,0 +1,18 @@
+code_standard_name,code,description
+ICD-10,N17.0,Acute kidney failure with tubular necrosis
+ICD-10,N17.8,Other acute kidney failure
+ICD-10,N17.9,"Acute kidney failure, unspecified"
+ICD-10,O90.4,Postpartum acute kidney failure
+ICD9,584.5,Ac kidney fail w lesn tubular necr
+ICD9,584.5,"Ac kidny fail, tubr necr"
+ICD9,584.6,Ac kidney fail w lesn renal cort necr
+ICD9,584.6,"Ac kidny fail, cort necr"
+ICD9,584.7,Ac kidney fail w lesn renal medul necr
+ICD9,584.8,Ac kidney fail w patholog lesn kidney
+ICD9,584.8,Acute kidney failure NEC
+ICD9,584.9,"Ac kidney failure, unspec"
+ICD9,584.9,Acute kidney failure NOS
+ICD9,669.32,Ac kidney fail-del w p/p
+ICD9,669.32,"Ac kidney fail fol L&D, postpart complic"
+ICD9,669.34,"Ac kidney fail fol L&D, postpart"
+ICD9,669.34,Ac kidney fail-postpart
